@@ -1,6 +1,7 @@
 cd(@__DIR__)
 using Pkg
 Pkg.activate(".")
+Pkg.instantiate()
 using QuadGK, DifferentialEquations, Plots
 
 kB = 1.3806503e-23;  # Boltzmann constant [J/K]
@@ -68,12 +69,16 @@ function U_ClO4(z)
 end;
 
 function mPBE(du, u, p, t)
-    i, j = 3, 4
+    # TO DO: U as imput function so that mPBE function is just 2 lines
+    i, j = 3, 2
+    k, l = 1, 4
     Ui = U_H(t)
-    Uj = U_ClO4(t)
-   
-    du[1] = -1*u[2]
-    du[2] = -1*-1e-20beta * elc^2 / (epsilon_o*epsilon_w) * ( q[i]/elc*rho_ion*exp(-Ui - q[i]/elc * u[1]) + q[j]/elc*rho_ion*exp(-Uj - q[j]/elc * u[1]))
+    Uj = U_Cl(t)
+    Uk = U_Na(t)
+    Ul = U_ClO4(t)
+
+    du[1] = -u[2]
+    du[2] = 1e-20beta * elc^2 / (epsilon_o*epsilon_w) * ( q[i]/elc*rho_ion*exp(-Ui - q[i]/elc * u[1]) + q[j]/elc*rho_ion*exp(-Uj - q[j]/elc * u[1]) + q[k]/elc*rho_ion*exp(-Uk - q[k]/elc * u[1]) + q[l]/elc*rho_ion*exp(-Ul - q[l]/elc * u[1]))
 end;
 
 function bc(residual, u, p, t)
@@ -82,10 +87,10 @@ function bc(residual, u, p, t)
 end;
 
 tspan = (boundary, 0.1);
-bvp = BVProblem(mPBE, bc, [0.0, 0.0], tspan)
-sol = solve(bvp, Shooting(Vern7()))
+bvp = BVProblem(mPBE, bc, [0.0, 0.0], tspan);
+sol = solve(bvp, Shooting(RadauIIA5(autodiff=false)))
 
-HCl_list    = zeros(Float64, size(sol.u)[1], 2);
+HCl_list = zeros(Float64, size(sol.u)[1], 2);
 function pre_plot!(u_list, sol)
     for (i, solu) in enumerate(sol.u)
         u_list[i,1] = sol.t[i]
@@ -93,7 +98,7 @@ function pre_plot!(u_list, sol)
     end
     return u_list
 end;
-HCl_list    = pre_plot!(HCl_list, sol);
+HCl_list = pre_plot!(HCl_list, sol);
 
 plot(HCl_list[:,1], HCl_list[:,2],
     label=["HCl"],
@@ -101,4 +106,4 @@ plot(HCl_list[:,1], HCl_list[:,2],
     xlims=(0,60),
     ylabel="Potential [V]",
     xlabel="z [Å]"
-)
+);
