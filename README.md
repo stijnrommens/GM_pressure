@@ -1,4 +1,4 @@
-# GM_pressure
+# Gibbs-Marangoni pressure
 This model is made to numerically solve the **modified Poisson-Boltzmann equation** from Duignan (2021) in Julia. This equation is modified as it not only includes a electrostatic potential, but also an adsorption energy function of the present ions [1].
 
 <img src="https://github.com/stijnrommens/GM_pressure/assets/113170925/cc816c5d-426a-4f06-9b4b-0b75e1747da0" width="400">
