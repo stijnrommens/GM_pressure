@@ -89,7 +89,7 @@ end;
 
 tspan = (boundary, 0.1);
 bvp = BVProblem(mPBE, bc, [0.0, 0.0], tspan);
-sol = solve(bvp, Shooting(RadauIIA5(autodiff=false)), reltol=1e-2, abstol=1e-4)
+sol = solve(bvp, Shooting(RadauIIA5(autodiff=false))) #, reltol=1e-2, abstol=1e-4)
 
 sol_list = zeros(Float64, size(sol.u)[1], 2);
 function pre_plot!(u_list, sol)
