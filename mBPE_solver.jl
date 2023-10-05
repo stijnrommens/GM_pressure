@@ -15,19 +15,20 @@ ionS = 0.1; # M
 T = 297.15; # K
 
      #     Na+,      Cl-,       H+,    ClO4-
-q  = [      +1,       -1,       +1,       -1] * elc; # Charge [C]
+q  = [      +1,       -1,       +1,       -1]; # Charge [C]
 ah = [2.50e-10, 2.00e-10, 1.97e-10, 2.83e-10];       # Hydrated radius
 
-kappa = sqrt(ionS) / 0.304e-9;
+# kappa = sqrt(ionS) / 0.304e-9
 rho_ion = ionS * Avog * 1000;
-boundary = 10e10/kappa;
 beta = 1 / (kB * T);
 STconst = -1e-6*1e10*beta/Avog;
+kappa = sqrt(2000*elc^2*Avog*ionS*beta/(epsilon_w*epsilon_o));
+boundary = 10e10/kappa;
 
 
 f(k, a) = (k*(sqrt(kappa^2 + k^2)*cosh(k*a) - k*sinh(k*a))) / (sqrt(kappa^2 + k^2)*(sqrt(kappa^2 + k^2)*cosh(k*a) + k*sinh(k*a)));
 function W(i)
-    factor = beta * q[i]^2 / (2epsilon_w * 4pi * epsilon_o)
+    factor = beta * (q[i]*elc)^2 / (2epsilon_w * 4pi * epsilon_o)
     W = quadgk(k -> f(k,ah[i]), 0, 10.0e10)[1] * factor
     return W
 end;
@@ -78,7 +79,7 @@ function mPBE(du, u, p, t)
     Ul = U_ClO4(t)
 
     du[1] = -u[2]
-    du[2] = 1e-20beta * elc^2 / (epsilon_o*epsilon_w) * ( q[i]/elc*rho_ion*exp(-Ui - q[i]/elc * u[1]) + q[j]/elc*rho_ion*exp(-Uj - q[j]/elc * u[1]) + q[k]/elc*rho_ion*exp(-Uk - q[k]/elc * u[1]) + q[l]/elc*rho_ion*exp(-Ul - q[l]/elc * u[1]))
+    du[2] = 1e-20beta * elc^2 / (epsilon_o*epsilon_w) * rho_ion/2*( q[i]*exp(-Ui - q[i] * u[1]) + q[j]*exp(-Uj - q[j] * u[1]) + q[k]*exp(-Uk - q[k] * u[1]) + q[l]*exp(-Ul - q[l] * u[1]))
 end;
 
 function bc(residual, u, p, t)
@@ -88,9 +89,9 @@ end;
 
 tspan = (boundary, 0.1);
 bvp = BVProblem(mPBE, bc, [0.0, 0.0], tspan);
-sol = solve(bvp, Shooting(RadauIIA5(autodiff=false)))
+sol = solve(bvp, Shooting(RadauIIA5(autodiff=false)), reltol=1e-2, abstol=1e-4)
 
-HCl_list = zeros(Float64, size(sol.u)[1], 2);
+sol_list = zeros(Float64, size(sol.u)[1], 2);
 function pre_plot!(u_list, sol)
     for (i, solu) in enumerate(sol.u)
         u_list[i,1] = sol.t[i]
@@ -98,12 +99,12 @@ function pre_plot!(u_list, sol)
     end
     return u_list
 end;
-HCl_list = pre_plot!(HCl_list, sol);
+sol_list = pre_plot!(sol_list, sol);
 
-plot(HCl_list[:,1], HCl_list[:,2],
-    label=["HCl"],
+plot(sol_list[:,1], sol_list[:,2],
+    label=["sol"],
     ylims=(-0.45,0.45),
     xlims=(0,60),
     ylabel="Potential [V]",
     xlabel="z [Å]"
-);
+)
