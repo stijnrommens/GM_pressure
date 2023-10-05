@@ -126,6 +126,11 @@ NaClO4 = 1,4,0,0;
 HClO4  = 3,4,0,0;
 HCl_NaClO4 = 3,2,1,4;
 
+function test(input)
+    solver(input)
+end;
+@btime test(HCl_NaClO4)
+
 NaCl_sol   = solver(NaCl)
 HCl_sol    = solver(HCl)
 NaClO4_sol = solver(NaClO4)
