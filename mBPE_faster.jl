@@ -2,7 +2,7 @@ cd(@__DIR__)
 using Pkg
 Pkg.activate(".")
 # Pkg.instantiate()
-using QuadGK, DifferentialEquations#, Plots#, BenchmarkTools#, StaticArrays, Profile, ProfileView, SnoopCompile
+using QuadGK, DifferentialEquations, BenchmarkTools#, Plots#, StaticArrays, Profile, ProfileView, SnoopCompile
 
 kB = 1.3806503e-23;  # Boltzmann constant [J/K]
 elc = 1.6021765e-19; # Elementary charge  [C]
@@ -101,9 +101,9 @@ H    = (+1, ah[3], W(3));
 ClO4 = (-1, ah[4], W(4));
 
 ion_tot = (Na, Cl, H, ClO4);
-n_salts = 2;
+n_salts = 1;
 
 param = (constants, ion_tot, n_salts);
 bvp = BVProblem(mPBE!, bc, u0, tspan, param);
 sol = solve(bvp, Shooting(RadauIIA5(autodiff=false)), save_everystep = false).u[2][1]*1000
-# @btime solve(bvp, Shooting(RadauIIA5(autodiff=false)), save_everystep = false)
+@btime solve(bvp, Shooting(RadauIIA5(autodiff=false)), save_everystep = false)
