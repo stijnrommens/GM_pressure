@@ -1,8 +1,8 @@
 cd(@__DIR__)
 using Pkg
 Pkg.activate(".")
-Pkg.instantiate()
-using QuadGK, DifferentialEquations, Plots, BenchmarkTools, StaticArrays, Profile, ProfileView, SnoopCompile
+# Pkg.instantiate()
+using QuadGK, DifferentialEquations#, Plots#, BenchmarkTools#, StaticArrays, Profile, ProfileView, SnoopCompile
 
 kB = 1.3806503e-23;  # Boltzmann constant [J/K]
 elc = 1.6021765e-19; # Elementary charge  [C]
@@ -25,52 +25,67 @@ STconst = -1e-6*1e10*beta/Avog;
 kappa = sqrt(2000*elc^2*Avog*ionS*beta/(epsilon_w*epsilon_o));
 boundary = 10e10/kappa;
 tspan = (boundary, 0.1);
+u0  = [0.0, 0.0];
+constants = (kappa, beta, elc, epsilon_o, epsilon_w, rho_ion);
 
 f(k, a) = (k*(sqrt(kappa^2 + k^2)*cosh(k*a) - k*sinh(k*a))) / (sqrt(kappa^2 + k^2)*(sqrt(kappa^2 + k^2)*cosh(k*a) + k*sinh(k*a)));
 function W(i)
-    factor = beta * (q[i]*elc)^2 / (2epsilon_w * 4*pi * epsilon_o)
+    factor = beta * (q[i]*elc)^2 / (2epsilon_w * 4pi * epsilon_o)
     W = quadgk(k -> f(k,ah[i]), 0, 10.0e10)[1] * factor
-    return W
 end;
 
-function U_Na(z)
-    if z < 1e10ah[1] # while inside hydrated ion radius
+function U_Na(z, ah, kappa, W)
+    if z < 1e10ah # while inside hydrated ion radius
         U = 1000
     else # outside of radius
-        U = W(1)*1e10ah[1]/z * exp(-2kappa * (1e-10z - ah[1]))
+        U = W*1e10ah/z * exp(-2kappa * (1e-10z - ah))
     end
-    return U
 end;
 
-function U_Cl(z)
-    if z < 1e10ah[2] # while inside hydrated ion radius
+function U_Cl(z, ah, kappa, W)
+    if z < 1e10ah # while inside hydrated ion radius
         U = 1000
     else # outside of radius
-        U = W(2)*1e10ah[2]/z * exp(-2kappa * (1e-10z - ah[2]))
+        U = W*1e10ah/z * exp(-2kappa * (1e-10z - ah))
     end
-    return U
 end;
 
-# factor_i, Wi, Ui = 0.0, 0.0, 0.0
-# factor_j, Wj, Uj = 0.0, 0.0, 0.0
+function U_H(z, ah, kappa, elc, beta, epsilon_o, epsilon_w)
+    if z < 1e10ah # while inside hydrated ion radius
+        U= 1/(4pi*epsilon_o) * elc^2*beta / (1e-10z*4epsilon_w) * exp(-2kappa*1e-10z) - 3.05
+    else # outside of radius
+        U = 1/(4pi*epsilon_o) * elc^2*beta / (1e-10z*4epsilon_w) * exp(-2kappa*1e-10z)
+    end
+end;
+
+function U_ClO4(z, ah, kappa, W)
+    if z < 1e10ah # while inside hydrated ion radius
+        U = W * 1e10ah/z * exp(-2kappa * (1e-10z - ah)) - 2.1
+    else # outside of radius
+        U = W * 1e10ah/z * exp(-2kappa * (1e-10z - ah))
+    end
+end;
 
 function mPBE!(du, u, p, t)
-    kappa, beta, elc, epsilon_o, epsilon_w, rho_ion, qi, qj, ahi, ahj, Wi, Wj = p
+    constants, ion_tot, n_salts = p
+    kappa, beta, elc, epsilon_o, epsilon_w, rho_ion = constants
+    ioni, ionj, ionk, ionl = ion_tot
+    qi, ahi, Wi = ioni
+    qj, ahj, Wj = ionj
+    qk, ahk, Wk = ionk
+    ql, ahl, Wl = ionl
 
-    if t < 1e10ahi # while inside hydrated ion radius
-        Ui = 1000.0
-    else # outside of radius
-        Ui = Wi*1e10ahi/t * exp(-2kappa * (1e-10t - ahi))
-    end
-
-    if t < 1e10ahj # while inside hydrated ion radius
-        Uj = 1000.0
-    else # outside of radius
-        Uj = Wj*1e10ahj/t * exp(-2kappa * (1e-10t - ahj))
-    end
+    Ui = U_Na(t, ahi, kappa, Wi)
+    Uj = U_Cl(t, ahj, kappa, Wj)
+    Uk = U_H(t, ahk, kappa, elc, beta, epsilon_o, epsilon_w)
+    Ul = U_ClO4(t, ahl, kappa, Wl)
 
     du[1] = -u[2]
-    du[2] = 1e-20beta * elc^2 / (epsilon_o*epsilon_w) * rho_ion/2*( qi*exp(-Ui - qi * u[1]) + qj*exp(-Uj - qj * u[1]))
+    if n_salts == 1
+        du[2] = 1e-20beta * elc^2 / (epsilon_o*epsilon_w) * rho_ion/n_salts*( qi*exp(-Ui - qi * u[1]) + qj*exp(-Uj - qj * u[1]) )
+    else
+        du[2] = 1e-20beta * elc^2 / (epsilon_o*epsilon_w) * rho_ion/n_salts*( qi*exp(-Ui - qi * u[1]) + qj*exp(-Uj - qj * u[1]) + qk*exp(-Uk - qk * u[1]) + ql*exp(-Ul - ql * u[1]) )
+    end
     nothing
 end;
 
@@ -80,36 +95,15 @@ function bc(residual, u, p, t)
     nothing
 end;
 
-qi, qj = +1.0, -1.0;
-ahi, ahj = ah[1], ah[2];
-Wi = W(1);
-Wj = W(2);
+Na   = (+1, ah[1], W(1));
+Cl   = (-1, ah[2], W(2));
+H    = (+1, ah[3], W(3));
+ClO4 = (-1, ah[4], W(4));
 
-param = (kappa, beta, elc, epsilon_o, epsilon_w, rho_ion, +1.0, -1.0, ah[1], ah[2], Wi, Wj);
-u0 = [0.0, 0.0];
+ion_tot = (Na, Cl, H, ClO4);
+n_salts = 2;
+
+param = (constants, ion_tot, n_salts);
 bvp = BVProblem(mPBE!, bc, u0, tspan, param);
-sol = solve(bvp, Shooting(RadauIIA5(autodiff=false)), save_everystep = false)
-@btime solve(bvp, Shooting(RadauIIA5(autodiff=false)), save_everystep = false)
-@time solve(bvp, Shooting(RadauIIA5(autodiff=false)), save_everystep = false)
-
-
-
-
-###
-NaCl_list   = zeros(Float64, size(NaCl_sol.u)[1], 2);
-function pre_plot!(u_list, sol)
-    for (i, solu) in enumerate(sol.u)
-        u_list[i,1] = sol.t[i]
-        u_list[i,2] = solu[1]
-    end
-    return u_list
-end;
-NaCl_list   = pre_plot!(NaCl_list, NaCl_sol);
-
-plot(NaCl_list[:,1], NaCl_list[:,2],
-    label=["NaCl" "HCl" "NaClO4" "HClO4" "HCl + NaClO4"],
-    ylims=(-0.45,0.45),
-    xlims=(0,60),
-    ylabel="Potential [V]",
-    xlabel="z [Å]"
-)
+sol = solve(bvp, Shooting(RadauIIA5(autodiff=false)), save_everystep = false).u[2][1]*1000
+# @btime solve(bvp, Shooting(RadauIIA5(autodiff=false)), save_everystep = false)
