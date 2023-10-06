@@ -2,7 +2,7 @@ cd(@__DIR__)
 using Pkg
 Pkg.activate(".")
 Pkg.instantiate()
-using QuadGK, DifferentialEquations, Plots, BenchmarkTools, StaticArrays, Profile
+using QuadGK, DifferentialEquations, Plots, BenchmarkTools, StaticArrays, Profile, ProfileView, SnoopCompile
 
 kB = 1.3806503e-23;  # Boltzmann constant [J/K]
 elc = 1.6021765e-19; # Elementary charge  [C]
@@ -28,7 +28,7 @@ tspan = (boundary, 0.1);
 
 f(k, a) = (k*(sqrt(kappa^2 + k^2)*cosh(k*a) - k*sinh(k*a))) / (sqrt(kappa^2 + k^2)*(sqrt(kappa^2 + k^2)*cosh(k*a) + k*sinh(k*a)));
 function W(i)
-    factor = beta * (q[i]*elc)^2 / (2epsilon_w * 4pi * epsilon_o)
+    factor = beta * (q[i]*elc)^2 / (2epsilon_w * 4*pi * epsilon_o)
     W = quadgk(k -> f(k,ah[i]), 0, 10.0e10)[1] * factor
     return W
 end;
@@ -51,53 +51,48 @@ function U_Cl(z)
     return U
 end;
 
-factor_i, Wi, Ui = 0.0, 0.0, 0.0
-factor_j, Wj, Uj = 0.0, 0.0, 0.0
+# factor_i, Wi, Ui = 0.0, 0.0, 0.0
+# factor_j, Wj, Uj = 0.0, 0.0, 0.0
 
 function mPBE!(du, u, p, t)
-    i, j = 1,2
-    Ui = U_Na(t)
-    Uj = U_Cl(t)
+    kappa, beta, elc, epsilon_o, epsilon_w, rho_ion, qi, qj, ahi, ahj, Wi, Wj = p
 
-    # factor_i = beta * (q[i]*elc)^2 / (2epsilon_w * 4pi * epsilon_o)
-    # Wi = quadgk(k -> f(k,ah[i]), 0, 10.0e10)[1] * factor_i
-    # if t < 1e10ah[i] # while inside hydrated ion radius
-    #     Ui = 1000
-    # else # outside of radius
-    #     Ui = Wi*1e10ah[i]/t * exp(-2kappa * (1e-10t - ah[i]))
-    # end
+    if t < 1e10ahi # while inside hydrated ion radius
+        Ui = 1000.0
+    else # outside of radius
+        Ui = Wi*1e10ahi/t * exp(-2kappa * (1e-10t - ahi))
+    end
 
-    # factor_j = beta * (q[j]*elc)^2 / (2epsilon_w * 4pi * epsilon_o)
-    # Wj = quadgk(k -> f(k,ah[j]), 0, 10.0e10)[1] * factor_j
-    # if t < 1e10ah[j] # while inside hydrated ion radius
-    #     Uj = 1000
-    # else # outside of radius
-    #     Uj = Wj*1e10ah[j]/t * exp(-2kappa * (1e-10t - ah[j]))
-    # end
-    Ui = 0.0
-    Uj = 0.0
+    if t < 1e10ahj # while inside hydrated ion radius
+        Uj = 1000.0
+    else # outside of radius
+        Uj = Wj*1e10ahj/t * exp(-2kappa * (1e-10t - ahj))
+    end
 
     du[1] = -u[2]
-    du[2] = 1e-20beta * elc^2 / (epsilon_o*epsilon_w) * rho_ion/2*( q[i]*exp(-Ui - q[i] * u[1]) + q[j]*exp(-Uj - q[j] * u[1]))
+    du[2] = 1e-20beta * elc^2 / (epsilon_o*epsilon_w) * rho_ion/2*( qi*exp(-Ui - qi * u[1]) + qj*exp(-Uj - qj * u[1]))
     nothing
 end;
 
 function bc(residual, u, p, t)
     residual[1] = u[end][2] -0.0
     residual[2] = u[1][1] -0.0
+    nothing
 end;
 
-param = 1,2;
-bvp = BVProblem(mPBE!, bc, [0.0, 0.0], tspan);
-sol = solve(bvp, Shooting(RadauIIA5(autodiff=false)))#, save_everystep = false)
+qi, qj = +1.0, -1.0;
+ahi, ahj = ah[1], ah[2];
+Wi = W(1);
+Wj = W(2);
+
+param = (kappa, beta, elc, epsilon_o, epsilon_w, rho_ion, +1.0, -1.0, ah[1], ah[2], Wi, Wj);
+u0 = [0.0, 0.0];
+bvp = BVProblem(mPBE!, bc, u0, tspan, param);
+sol = solve(bvp, Shooting(RadauIIA5(autodiff=false)), save_everystep = false)
 @btime solve(bvp, Shooting(RadauIIA5(autodiff=false)), save_everystep = false)
+@time solve(bvp, Shooting(RadauIIA5(autodiff=false)), save_everystep = false)
 
-function test()
-    bvp = BVProblem(mPBE, bc, [0.0, 0.0], tspan, param);
-    sol = solve(bvp, Shooting(RadauIIA5(autodiff=false)))
-end
 
-@allocated test()
 
 
 ###
