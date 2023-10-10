@@ -2,7 +2,7 @@ cd(@__DIR__)
 using Pkg
 Pkg.activate(".")
 Pkg.instantiate()
-using QuadGK, DifferentialEquations, Plots, BenchmarkTools
+using QuadGK, DifferentialEquations, Plots, BenchmarkTools, Interpolations
 
 kB = 1.3806503e-23;  # Boltzmann constant [J/K]
 elc = 1.6021765e-19; # Elementary charge  [C]
@@ -68,6 +68,18 @@ function U_ClO4(z)
     end
     return U
 end;
+
+z_range = range(0, 6,101)
+# U = zeros(Float64, size(z_range)[1])
+U = Dict()
+for (i, z) in enumerate(z_range)
+    U[z] = U_ClO4(z)
+    print(z)
+    print(" ")
+end
+ans = get(U, 1.02, nothing)
+# unknown = itp(5)
+plot(z_range, U, xlims=(0,6), ylims=(-3,4))
 
 function mPBE(du, u, p, t)
     i, j, k, l = p
@@ -159,3 +171,30 @@ plot([NaCl_list[:,1], HCl_list[:,1], NaClO4_list[:,1], HClO4_list[:,1], HCl_NaCl
     ylabel="Potential [V]",
     xlabel="z [Å]"
 )
+
+
+# function pGM!(time, potential, p, c_bulk)
+#     constants, ion_tot, n_salts = p
+#     kappa, beta, elc, epsilon_o, epsilon_w, rho_ion = constants
+#     ioni, ionj, ionk, ionl = ion_tot
+#     qi, ahi, Wi = ioni
+#     qj, ahj, Wj = ionj
+#     qk, ahk, Wk = ionk
+#     ql, ahl, Wl = ionl
+
+#     conc_matrix = zeros(Float64, size(time)[1], 2)
+#     for (index, tpoint) in enumerate(time)
+#         Ui = U_Na(tpoint, ahi, kappa, Wi)
+#         # Uj = U_Cl(tpoint, ahj, kappa, Wj)
+#         # Ui = U_H(tpoint, ahk, kappa, elc, beta, epsilon_o, epsilon_w)
+#         Uj = U_ClO4(tpoint, ahl, kappa, Wl)
+    
+#         conc_matrix[index,1] = exp(-Ui-qi*potential[index][1])-1
+#         conc_matrix[index,2] = exp(-Uj-qj*potential[index][1])-1
+#     end
+#     # conc_matrix = conc_matrix/c_bulk
+#     # print(conc_matrix)
+#     gammacon = trapz(time, conc_matrix[:,2])
+#     return gammacon
+# end;
+# sol2 = pGM!(sol.t, sol.u, param, ionS)
