@@ -2,7 +2,7 @@ cd(@__DIR__)
 using Pkg
 Pkg.activate(".")
 # Pkg.instantiate()
-using QuadGK, DifferentialEquations, BenchmarkTools, Trapz, Plots#, StaticArrays, Profile, ProfileView, SnoopCompile
+using QuadGK, DifferentialEquations, BenchmarkTools, Trapz, Plots, NumericalIntegration, FastGaussQuadrature#, StaticArrays, Profile, ProfileView, SnoopCompile
 
 kB = 1.3806503e-23;  # Boltzmann constant [J/K]
 elc = 1.6021765e-19; # Elementary charge  [C]
@@ -71,9 +71,9 @@ function mPBE!(du, u, p, t)
     ql, ahl, Wl = ionl
 
     # Ui = U_Na(t, ahi, kappa, Wi)
-    Uj = U_Cl(t, ahj, kappa, Wj)
+    # Uj = U_Cl(t, ahj, kappa, Wj)
     Ui = U_H(t, ahk, kappa, elc, beta, epsilon_o, epsilon_w)
-    # Ul = U_ClO4(t, ahl, kappa, Wl)
+    Uj = U_ClO4(t, ahl, kappa, Wl)
 
     du[1] = -u[2]
     if n_salts == 1
@@ -84,7 +84,7 @@ function mPBE!(du, u, p, t)
     nothing
 end;
 
-function bc(residual, u, p, t)
+function bc!(residual, u, p, t)
     residual[1] = u[end][2] -0.0
     residual[2] = u[1][1] -0.0
     nothing
@@ -99,15 +99,16 @@ ion_tot = (Na, Cl, H, ClO4); # Only change Gads functions in mBPE! and pGM!
 n_salts = 1;
 
 param = (constants, ion_tot, n_salts);
-bvp = BVProblem(mPBE!, bc, u0, tspan, param);
-sol = solve(bvp, Shooting(RadauIIA5(autodiff=false)))
+bvp = BVProblem(mPBE!, bc!, u0, tspan, param);
+sol = solve(bvp, Shooting(RadauIIA5(autodiff=false)))#, dtmax=0.1)
+# @btime sol = solve(bvp, Shooting(RadauIIA5(autodiff=false)))
 
-plot(sol.t, reduce(hcat, sol.u)[1,:],
-    ylims=(-0.45,0.45),
-    xlims=(0,60),
-    ylabel="Potential [V]",
-    xlabel="z [Å]"
-)
+# plot(sol.t, reduce(hcat, sol.u)[1,:],
+#     ylims=(-0.45,0.45),
+#     xlims=(0,60),
+#     ylabel="Potential [V]",
+#     xlabel="z [Å]"
+# )
 
 
 function pGM!(time, potential, p, c_bulk)
@@ -122,13 +123,13 @@ function pGM!(time, potential, p, c_bulk)
     conc_matrix = zeros(Float64, size(time)[1], 2n_salts)
     for (index, t) in enumerate(time)
         # Ui = U_Na(t, ahi, kappa, Wi)
-        Uj = U_Cl(t, ahj, kappa, Wj)
+        # Uj = U_Cl(t, ahj, kappa, Wj)
         Ui = U_H(t, ahk, kappa, elc, beta, epsilon_o, epsilon_w)
-        # Ul = U_ClO4(t, ahl, kappa, Wl)
-    
+        Uj = U_ClO4(t, ahl, kappa, Wl)
+        
         if n_salts == 1
-            conc_matrix[index,1] = exp(-Ui-qi*potential[index][1]) - 1
-            conc_matrix[index,2] = exp(-Uj-qj*potential[index][1]) - 1
+            conc_matrix[index,1] = exp(-Ui-qi*potential(t)[1]) - 1
+            conc_matrix[index,2] = exp(-Uj-qj*potential(t)[1]) - 1
         else
             conc_matrix[index,1] = exp(-Ui-qi*potential[index][1])-1
             conc_matrix[index,2] = exp(-Uj-qj*potential[index][1])-1
@@ -138,27 +139,28 @@ function pGM!(time, potential, p, c_bulk)
     end
 
     if n_salts == 1
-        gammaconi = -trapz(time, conc_matrix[:,1])
-        gammaconj = -trapz(time, conc_matrix[:,2])
+        gammaconi = trapz(time, conc_matrix[:,1])
+        gammaconj = trapz(time, conc_matrix[:,2])
         gammacon = gammaconi, gammaconj
         tension = sum(gammacon)/(STconst*n_salts)
         pGM = 4Avog * ionS/n_salts*1000 * (gammaconi^2 + gammaconj^2)*1e-20 / (beta*(10e-9)^2)
     
     else
-        gammaconi = -trapz(time, conc_matrix[:,1])
-        gammaconj = -trapz(time, conc_matrix[:,2])
-        gammaconk = -trapz(time, conc_matrix[:,3])
-        gammaconl = -trapz(time, conc_matrix[:,4])
+        gammaconi = trapz(time, conc_matrix[:,1])
+        gammaconj = trapz(time, conc_matrix[:,2])
+        gammaconk = trapz(time, conc_matrix[:,3])
+        gammaconl = trapz(time, conc_matrix[:,4])
         gammacon = gammaconi, gammaconj, gammaconk, gammaconl
         tension = sum(gammacon)/(STconst*n_salts)
         pGM = 4Avog * ionS/n_salts*1000 * (gammaconi^2 + gammaconj^2 + gammaconk^2+ gammaconl^2)*1e-20 / (beta*(10e-9)^2)
     end
-    # return gammacon, tension, pGM
-    return conc_matrix, gammacon
+    return gammacon, tension, pGM
 end;
-sol2 = pGM!(sol.t, sol.u, param, ionS)
+time_range = range(0.01, boundary, 1000001);
+sol2 = pGM!(time_range, sol, param, ionS)
 
-plot(sol.t, sol2[1])
-# scatter!(sol.t, sol2[1],
+# @btime sol2 = pGM!(time_range, sol, param, ionS)
+# plot(time_range, sol2[1])
+# scatter!(time_range, sol2[1],
 #     ylims=(-2,8),
 #     xlims=(0,12))
