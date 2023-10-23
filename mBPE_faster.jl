@@ -2,7 +2,7 @@ cd(@__DIR__)
 using Pkg
 Pkg.activate(".")
 # Pkg.instantiate()
-using QuadGK, DifferentialEquations, BenchmarkTools, Trapz, Plots, NumericalIntegration, FastGaussQuadrature#, StaticArrays, Profile, ProfileView, SnoopCompile
+using QuadGK, DifferentialEquations, BenchmarkTools, Trapz, Plots#, NumericalIntegration, FastGaussQuadrature#, StaticArrays, Profile, ProfileView, SnoopCompile
 
 kB = 1.3806503e-23;  # Boltzmann constant [J/K]
 elc = 1.6021765e-19; # Elementary charge  [C]
@@ -71,9 +71,9 @@ function mPBE!(du, u, p, t)
     ql, ahl, Wl = ionl
 
     # Ui = U_Na(t, ahi, kappa, Wi)
-    # Uj = U_Cl(t, ahj, kappa, Wj)
+    Uj = U_Cl(t, ahj, kappa, Wj)
     Ui = U_H(t, ahk, kappa, elc, beta, epsilon_o, epsilon_w)
-    Uj = U_ClO4(t, ahl, kappa, Wl)
+    # Uj = U_ClO4(t, ahl, kappa, Wl)
 
     du[1] = -u[2]
     if n_salts == 1
@@ -90,10 +90,10 @@ function bc!(residual, u, p, t)
     nothing
 end;
 
-Na   = (+1, 2.50e-10, W(+1, 2.50e-10))
-Cl   = (-1, 2.00e-10, W(-1, 2.00e-10))
-H    = (+1, 1.97e-10, W(+1, 1.97e-10))
-ClO4 = (-1, 2.83e-10, W(-1, 2.83e-10))
+Na   = (+1, 2.50e-10, W(+1, 2.50e-10));
+Cl   = (-1, 2.00e-10, W(-1, 2.00e-10));
+H    = (+1, 1.97e-10, W(+1, 1.97e-10));
+ClO4 = (-1, 2.83e-10, W(-1, 2.83e-10));
 
 ion_tot = (Na, Cl, H, ClO4); # Only change Gads functions in mBPE! and pGM!
 n_salts = 1;
@@ -123,9 +123,9 @@ function pGM!(time, potential, p, c_bulk)
     conc_matrix = zeros(Float64, size(time)[1], 2n_salts)
     for (index, t) in enumerate(time)
         # Ui = U_Na(t, ahi, kappa, Wi)
-        # Uj = U_Cl(t, ahj, kappa, Wj)
+        Uj = U_Cl(t, ahj, kappa, Wj)
         Ui = U_H(t, ahk, kappa, elc, beta, epsilon_o, epsilon_w)
-        Uj = U_ClO4(t, ahl, kappa, Wl)
+        # Uj = U_ClO4(t, ahl, kappa, Wl)
         
         if n_salts == 1
             conc_matrix[index,1] = exp(-Ui-qi*potential(t)[1]) - 1
@@ -158,9 +158,14 @@ function pGM!(time, potential, p, c_bulk)
 end;
 time_range = range(0.01, boundary, 1000001);
 sol2 = pGM!(time_range, sol, param, ionS)
-
 # @btime sol2 = pGM!(time_range, sol, param, ionS)
-# plot(time_range, sol2[1])
+
+# plot(time_range, sol2[1],
+#     labels=["H" "Cl"],
+#     ylims=(0,0.8),
+#     xlims=(0,12),
+#     ylabel="Concentration [M]",
+#     xlabel="z [Å]")
 # scatter!(time_range, sol2[1],
 #     ylims=(-2,8),
 #     xlims=(0,12))
