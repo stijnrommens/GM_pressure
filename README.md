@@ -18,3 +18,4 @@ Sources:\
 
 # Prerequisites
 Julia needs to be installed. The attached .tomls in this repo should automatically install the required packages.
+Python files could use packages that need to be pre-installed.
