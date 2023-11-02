@@ -21,7 +21,6 @@ tspan = (boundary, 0.01);
 u0  = [0.0, 0.0];
 constants = (kappa, beta, elc, epsilon_o, epsilon_w, rho_ion);
 
-
 f(k, a) = (k*(sqrt(kappa^2 + k^2)*cosh(k*a) - k*sinh(k*a))) / (sqrt(kappa^2 + k^2)*(sqrt(kappa^2 + k^2)*cosh(k*a) + k*sinh(k*a)));
 function W(q, ah)
     factor = beta * (q*elc)^2 / (2epsilon_w * 4pi * epsilon_o)
