@@ -1,7 +1,10 @@
+import numpy as np
+
 # Constants
 rho = 997 # kg/m3
 g = 9.81 # m/s2
 radius = 192e-3/2 # m
+Ac = np.pi*radius**2 # m2
 liquid_height = 224e-3 # m 
 sensor_height = 563e-3+16e-3 # m
 
@@ -40,7 +43,7 @@ pressure_meas_dict = {10:r'\2023-11-01_134050_pressure probe voltage.tdms',
                     40:r'\2023-11-01_151117_pressure probe voltage.tdms'} # flow (L/min):file
 
 def constants():
-    return rho, g, radius, liquid_height, sensor_height
+    return rho, g, radius, liquid_height, sensor_height, Ac
 
 def fiber_meas():
     return fiber_meas_dict
