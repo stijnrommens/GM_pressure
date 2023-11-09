@@ -36,11 +36,13 @@ def fiber_probe(files):
 
         # Obtain velocity and size
         velocity = df_valid['Veloc']
-        mean_velocity = sum(velocity)/len(velocity) # m/s
+        mean_velocity = np.mean(velocity) # m/s
+        std_velocity = np.std(velocity)   # m/s
 
         size = df_valid['Size']*1e-6
-        d32 = sum(size**3)/sum(size**2) # m
-        
+        d32 = sum(size**3)/sum(size**2)   # m
+        std_size = np.std(np.array(size)) # m
+
         # Load 2nd file
         path_stream = r'u:\Bubble Column\Data\A2 Fiber Probe\231101 - Flow variation in Water' + file_name + '_stream.evt'
         df_stream = pd.read_csv(path_stream, sep='\t', decimal=',')
@@ -50,7 +52,7 @@ def fiber_probe(files):
         duration = df_stream['Duration']
         void_fraction = sum(duration)/arrival[len(arrival)-1]
 
-        results.append([param, mean_velocity, d32, void_fraction])
+        results.append([param, mean_velocity, std_velocity, d32, std_size, void_fraction])
     return np.array(results)
 fiber_probe_results = fiber_probe(files)
 
@@ -71,7 +73,7 @@ def pressure_sensor(files, fit):
         for group in loaded_file.groups():
             df = group.as_dataframe()
         voltage = df['Dev1/ai1']
-        mean_voltage = sum(voltage)/len(voltage) # V
+        mean_voltage = np.mean(voltage) # V
         
         gas_height = fit[0]*mean_voltage + fit[1]
         volume_L = Ac * sensor_height # m3
@@ -83,13 +85,14 @@ def pressure_sensor(files, fit):
 fit = calibration.calibration_fit(calibration_files)
 pressure_sensor_results = pressure_sensor(files, fit)
 
+
 # Plot velocity and size
 fig, ax1 = plt.subplots()
 ax2 = ax1.twinx()
-ax1.plot(    fiber_probe_results[:,0]/(Ac*60*1000),fiber_probe_results[:,1],     color="#69b3a2", lw=3)
-ax1.scatter(fiber_probe_results[:,0]/(Ac*60*1000), fiber_probe_results[:,1],     color="#69b3a2")
-ax2.plot(   fiber_probe_results[:,0]/(Ac*60*1000), fiber_probe_results[:,2]*1e3, color="#3399e6", lw=3)
-ax2.scatter(fiber_probe_results[:,0]/(Ac*60*1000), fiber_probe_results[:,2]*1e3, color="#3399e6")
+ax1.plot(   fiber_probe_results[:,0]/(Ac*60*1000), fiber_probe_results[:,1],     color="#69b3a2", lw=3)
+ax1.errorbar(fiber_probe_results[:,0]/(Ac*60*1000), fiber_probe_results[:,1], yerr=fiber_probe_results[:,2], fmt='-o', color="#69b3a2")
+# ax2.plot(   fiber_probe_results[:,0]/(Ac*60*1000), fiber_probe_results[:,3]*1e3, color="#3399e6", lw=3)
+# ax2.errorbar(fiber_probe_results[:,0]/(Ac*60*1000), fiber_probe_results[:,3]*1e3, yerr=fiber_probe_results[:,4]*1e3, fmt='-o', color="#3399e6")
 ax1.set_xlabel("Superficial gas velocity [m/s]")
 ax1.set_ylabel("Bubble mean velocity [m/s]", color="#69b3a2", fontsize=14)
 ax1.tick_params(axis="y", labelcolor="#69b3a2")
@@ -97,6 +100,7 @@ ax2.set_ylabel("d32 [mm]", color="#3399e6", fontsize=14)
 ax2.tick_params(axis="y", labelcolor="#3399e6")
 fig.suptitle("Bubble properties", fontsize=20)
 plt.show()
+
 
 # Plot gas holdup
 fig, ax1 = plt.subplots()

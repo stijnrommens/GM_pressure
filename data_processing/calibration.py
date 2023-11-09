@@ -22,7 +22,7 @@ def calibration_fit(files):
         for group in loaded_file.groups():
             df = group.as_dataframe()
         voltage = df['Dev1/ai1']
-        mean_voltage = sum(voltage)/len(voltage) # V
+        mean_voltage = np.mean(voltage) # V
         data_to_fit.append([height, mean_voltage])
     data_to_fit = np.array(data_to_fit)
 
