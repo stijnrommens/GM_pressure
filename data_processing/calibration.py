@@ -2,8 +2,8 @@ import os
 import numpy as np
 from nptdms import TdmsFile
 
-# import inputs
-# calibration_files = inputs.calibration_data() 
+import inputs
+calibration_files = inputs.calibration_data() 
 
 def calibration_fit(files):
     ''' Fit a linear line to the calibration data. '''
@@ -32,4 +32,4 @@ def calibration_fit(files):
     degree = 1
     fit = np.polyfit(x, y, degree)
     return fit
-# fit = calibration_fit(calibration_files)
+fit = calibration_fit(calibration_files)
