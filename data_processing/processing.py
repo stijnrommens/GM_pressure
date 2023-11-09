@@ -1,63 +1,84 @@
-# Common libraries
 import os
 import numpy as np
 import pandas as pd
+from nptdms import TdmsFile
 import matplotlib.pyplot as plt
 
-# Own files
 import inputs
-import functions
+import calibration
 
-# Import files from inputs
-fiber_meas_dict = inputs.fiber_meas()
-pressure_cal_dict = inputs.pressure_cal() 
-pressure_meas_dict = inputs.pressure_meas()
-rho = inputs.constants()[0]
-g = inputs.constants()[1]
-radius = inputs.constants()[2]
-Ac = inputs.constants()[5]
-liquid_height = inputs.constants()[3]
-sensor_height = inputs.constants()[4]
+files = inputs.measurement_data()
+calibration_files = inputs.calibration_data()
 
-# Send inputs to functions
-fiber_meas = functions.fiber_measurement(fiber_meas_dict, radius) # Fiber probe
-pressure_cal = functions.pressure_calibration(pressure_cal_dict, rho, g) # Pressure sensor
-pressure_meas = functions.pressure_measurement(pressure_meas_dict, pressure_cal, radius, liquid_height, sensor_height) # Pressure sensor
-# print(fiber_meas[:,-1])
-# print(pressure_meas[:,-1])
+rho = 997 # kg/m3, density of water
+g = 9.81  # m/s2, gravitational constant
 
-# Plot fiber probe
-# fig, ax1 = plt.subplots()
-# ax2 = ax1.twinx()
-# ax1.plot(fiber_meas[:,0]/(Ac*60*1000), fiber_meas[:,1], color="#69b3a2", lw=3)
-# ax1.scatter(fiber_meas[:,0]/(Ac*60*1000), fiber_meas[:,1], color="#69b3a2")
-# ax2.plot(fiber_meas[:,0]/(Ac*60*1000), fiber_meas[:,2]*1e3, color="#3399e6", lw=3)
-# ax2.scatter(fiber_meas[:,0]/(Ac*60*1000), fiber_meas[:,2]*1e3, color="#3399e6")
-# ax1.set_xlabel("Superficial gas velocity [m/s]")
-# ax1.set_ylabel("Bubble mean velocity [m/s]", color="#69b3a2", fontsize=14)
-# ax1.tick_params(axis="y", labelcolor="#69b3a2")
-# ax2.set_ylabel("d32 [mm]", color="#3399e6", fontsize=14)
-# ax2.tick_params(axis="y", labelcolor="#3399e6")
-# fig.suptitle("Bubble properties", fontsize=20)
-# plt.show()
+radius = 192e-3/2    # m, inside radius column
+Ac = np.pi*radius**2 # m2, cross-sectional area column
 
-# Plot pressure sensor
-# fig, ax1 = plt.subplots()
-# ax1.plot(pressure_cal[:,1], pressure_cal[:,0], color="#69b3a2", lw=3)
-# ax1.scatter(pressure_meas[:,1], pressure_meas[:,3], color="#3399e6", lw=3)
-# ax1.set_xlabel("Voltage [V]")
-# ax1.set_ylabel("Height [m]", fontsize=14)
-# ax1.tick_params(axis="y")
-# fig.suptitle("Pressure sensor calibration", fontsize=20)
-# plt.show()
+sensor_height = 563e-3+16e-3 # m, height pressure sensor from sparger
+liquid_height = 224e-3       # m, water height from sensor with no flow
 
-# Plot gas hold ups
-# fig, ax1 = plt.subplots()
-# ax1.plot(pressure_meas[:,0], pressure_meas[:,-1], color="#3399e6", lw=3, label='Pressure sensor')
-# ax1.plot(fiber_meas[:,0], fiber_meas[:,-1], color="#69b3a2", lw=3, label='Fiber probe')
-# ax1.set_xlabel("Gas flow [L/min]")
-# ax1.set_ylabel("Gas holdup [-]", fontsize=14)
-# ax1.tick_params(axis="y")
-# fig.suptitle("Comparison", fontsize=20)
-# plt.legend()
-# plt.show()
+
+def fiber_probe(files):
+    ''' From the measurements, extract fiber probe information. '''
+    
+    results = []
+    for file in files:
+        param = file[0]     # height, flow, etc.
+        file_name = file[1] # -
+        
+        # Load 1st file
+        path = r'u:\Bubble Column\Data\A2 Fiber Probe\231101 - Flow variation in Water' + file_name + '.evt'
+        df = pd.read_csv(path, sep='\t', decimal=',')
+
+        df_valid = df[df.Valid == 1] # Only valid bubbles
+
+        # Obtain velocity and size
+        velocity = df_valid['Veloc']
+        mean_velocity = sum(velocity)/len(velocity) # m/s
+
+        size = df_valid['Size']*1e-6
+        d32 = sum(size**3)/sum(size**2) # m
+        
+        # Load 2nd file
+        path_stream = r'u:\Bubble Column\Data\A2 Fiber Probe\231101 - Flow variation in Water' + file_name + '_stream.evt'
+        df_stream = pd.read_csv(path_stream, sep='\t', decimal=',')
+
+        # Obtain gas holdup
+        arrival = df_stream['Arrival']
+        duration = df_stream['Duration']
+        void_fraction = sum(duration)/arrival[len(arrival)-1]
+
+        results.append([param, mean_velocity, d32, void_fraction])
+    return np.array(results)
+fiber_probe_results = fiber_probe(files)
+
+
+def pressure_sensor(files, fit):
+    ''' From the measured mean voltage and the fitted line, obtain the gas holdup. '''
+    
+    results = []
+    for file in files:
+        param = file[0]     # height, flow, etc.
+        file_name = file[2] # -
+        
+        # Load file
+        path = r'u:\Bubble Column\Data\PXM419' + file_name + '.tdms'
+        loaded_file = TdmsFile(path)
+        
+        # Obtain voltage
+        for group in loaded_file.groups():
+            df = group.as_dataframe()
+        voltage = df['Dev1/ai1']
+        mean_voltage = sum(voltage)/len(voltage) # V
+        
+        gas_height = fit[0]*mean_voltage + fit[1]
+        volume_L = Ac * sensor_height # m3
+        volume_G = Ac * (gas_height-liquid_height) # m3
+        holdup = volume_G/volume_L # -
+        
+        results.append([param, mean_voltage, gas_height, holdup])
+    return np.array(results)
+fit = calibration.calibration_fit(calibration_files)
+pressure_sensor_results = pressure_sensor(files, fit)

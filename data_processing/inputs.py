@@ -12,6 +12,7 @@ measurement = [ [10, r'\2023-11-01T134048', r'\2023-11-01_134050_pressure probe 
                 # [10, r'\2023-11-01T152703', r'\2023-11-01_152705_pressure probe voltage'],
                 # [40, r'\2023-11-01T151115', r'\2023-11-01_151117_pressure probe voltage'] ]
 
+
 calibration = [ [0.000, r'\2023-11-01_111637_pressure probe voltage'],
                 [0.106, r'\2023-11-01_112949_pressure probe voltage'],
                 [0.195, r'\2023-11-01_113547_pressure probe voltage'],
@@ -19,13 +20,10 @@ calibration = [ [0.000, r'\2023-11-01_111637_pressure probe voltage'],
                 [0.3965, r'\2023-11-01_114332_pressure probe voltage'],
                 [0.484, r'\2023-11-01_114833_pressure probe voltage'] ] # height (m):pressure sensor
 
+
 def measurement_data():
     return measurement
 
+
 def calibration_data():
     return calibration
-
-def remove_column(matrix, col_to_remove):
-    for row in matrix:
-        del row[col_to_remove]
-    return matrix

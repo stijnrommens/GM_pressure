@@ -3,6 +3,15 @@ import numpy as np
 import pandas as pd
 from nptdms import TdmsFile
 
+rho = 997 # kg/m3, density of water
+g = 9.81  # m/s2, gravitational constant
+
+radius = 192e-3/2    # m, inside radius column
+Ac = np.pi*radius**2 # m2, cross-sectional area column
+
+sensor_height = 563e-3+16e-3 # m, height pressure sensor from sparger
+liquid_height = 224e-3       # m, water height from sensor with no flow
+
 def pressure_calibration(files_dict, rho, g):
     results = []
     for height in files_dict:
@@ -68,29 +77,3 @@ def fiber_measurement(files_dict, radius):
         results.append([flow, mean_velocity, d32, void_fraction])
     results = np.array(results)
     return results
-
-# %%
-# import os
-# import numpy as np
-# import pandas as pd
-
-# path_stream = r'u:\Bubble Column\Data\A2 Fiber Probe\231101 - Flow variation in Water\2023-11-01T150555_stream.evt'
-# df_stream = pd.read_csv(path_stream, sep='\t', decimal=',') # Initialize dataframe
-# arrival = df_stream['Arrival']
-# duration = df_stream['Duration']
-
-# lis=[]
-# for i, ar in enumerate(arrival):
-#     if i+1 == len(arrival):
-#         break
-#     else:
-#         frac = (duration[i]/(arrival[i+1]-arrival[i]))
-#         lis.append(frac)
-#         # print(frac)
-
-# print(lis)
-# print(sum(lis)/len(lis))
-
-# void_fraction = sum(duration)/arrival[len(arrival)-1]
-# print(void_fraction)
-# %%
