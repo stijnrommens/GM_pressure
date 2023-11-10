@@ -13,11 +13,14 @@ calibration_files = inputs.calibration_data()
 rho = 997 # kg/m3, density of water
 g = 9.81  # m/s2, gravitational constant
 
-radius = 192e-3/2    # m, inside radius column
+# radius = 192e-3/2    # m, inside radius column
+radius = 150e-3/2    # m, inside radius column
 Ac = np.pi*radius**2 # m2, cross-sectional area column
 
-sensor_height = 563e-3+16e-3 # m, height pressure sensor from sparger
-liquid_height = 224e-3       # m, water height from sensor with no flow
+# sensor_height = 563e-3+16e-3 # m, height pressure sensor from sparger
+sensor_height = 752e-3 # m, height pressure sensor from sparger
+# liquid_height = 224e-3       # m, water height from sensor with no flow
+liquid_height = 115e-3       # m, water height from sensor with no flow
 
 
 def fiber_probe(files):
@@ -29,7 +32,7 @@ def fiber_probe(files):
         file_name = file[1] # -
         
         # Load 1st file
-        path = r'u:\Bubble Column\Data\A2 Fiber Probe\231101 - Flow variation in Water' + file_name + '.evt'
+        path = r'u:\Bubble Column\Data\A2 Fiber Probe\231110 - Flow variation in Water (2)' + file_name + '.evt'
         df = pd.read_csv(path, sep='\t', decimal=',')
 
         df_valid = df[df.Valid == 1] # Only valid bubbles
@@ -44,7 +47,7 @@ def fiber_probe(files):
         std_size = np.std(np.array(size)) # m
 
         # Load 2nd file
-        path_stream = r'u:\Bubble Column\Data\A2 Fiber Probe\231101 - Flow variation in Water' + file_name + '_stream.evt'
+        path_stream = r'u:\Bubble Column\Data\A2 Fiber Probe\231110 - Flow variation in Water (2)' + file_name + '_stream.evt'
         df_stream = pd.read_csv(path_stream, sep='\t', decimal=',')
 
         # Obtain gas holdup
@@ -66,7 +69,7 @@ def pressure_sensor(files, fit):
         file_name = file[2] # -
         
         # Load file
-        path = r'u:\Bubble Column\Data\PXM419' + file_name + '.tdms'
+        path = r'u:\Bubble Column\Data\PXM419\231110 - Flow variation in Water (2)' + file_name + '.tdms'
         loaded_file = TdmsFile(path)
         
         # Obtain voltage
@@ -90,8 +93,8 @@ pressure_sensor_results = pressure_sensor(files, fit)
 fig, ax1 = plt.subplots()
 ax2 = ax1.twinx()
 ax1.plot(   fiber_probe_results[:,0]/(Ac*60*1000), fiber_probe_results[:,1],     color="#69b3a2", lw=3)
-ax1.errorbar(fiber_probe_results[:,0]/(Ac*60*1000), fiber_probe_results[:,1], yerr=fiber_probe_results[:,2], fmt='-o', color="#69b3a2")
-# ax2.plot(   fiber_probe_results[:,0]/(Ac*60*1000), fiber_probe_results[:,3]*1e3, color="#3399e6", lw=3)
+# ax1.errorbar(fiber_probe_results[:,0]/(Ac*60*1000), fiber_probe_results[:,1], yerr=fiber_probe_results[:,2], fmt='-o', color="#69b3a2")
+ax2.plot(   fiber_probe_results[:,0]/(Ac*60*1000), fiber_probe_results[:,3]*1e3, color="#3399e6", lw=3)
 # ax2.errorbar(fiber_probe_results[:,0]/(Ac*60*1000), fiber_probe_results[:,3]*1e3, yerr=fiber_probe_results[:,4]*1e3, fmt='-o', color="#3399e6")
 ax1.set_xlabel("Superficial gas velocity [m/s]")
 ax1.set_ylabel("Bubble mean velocity [m/s]", color="#69b3a2", fontsize=14)
