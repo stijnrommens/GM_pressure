@@ -19,12 +19,12 @@ measurement = [ [10, r'\2023-11-10T144823', r'\2023-11-10_144824_pressure probe 
                 [60, r'\2023-11-10T144114', r'\2023-11-10_144115_pressure probe voltage'],
                 [70, r'\2023-11-10T150718', r'\2023-11-10_150719_pressure probe voltage'] ]
 
-calibration = [ [0.000, r'\2023-11-01_111637_pressure probe voltage'],
-                [0.106, r'\2023-11-01_112949_pressure probe voltage'],
-                [0.195, r'\2023-11-01_113547_pressure probe voltage'],
-                [0.302, r'\2023-11-01_113855_pressure probe voltage'],
-                [0.3965, r'\2023-11-01_114332_pressure probe voltage'],
-                [0.484, r'\2023-11-01_114833_pressure probe voltage'] ] # height (m):pressure sensor
+calibration = [ [0.000, r'\2023-11-10_153842_pressure probe voltage'],
+                [0.103, r'\2023-11-10_152042_pressure probe voltage'],
+                [0.115, r'\2023-11-10_132616_pressure probe voltage'],
+                [0.2105, r'\2023-11-10_152425_pressure probe voltage'],
+                [0.289, r'\2023-11-10_152609_pressure probe voltage'],
+                [0.374, r'\2023-11-10_152748_pressure probe voltage'] ] # height (m):pressure sensor
 
 
 def measurement_data():

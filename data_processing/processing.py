@@ -44,6 +44,7 @@ def fiber_probe(files):
 
         size = df_valid['Size']*1e-6
         d32 = sum(size**3)/sum(size**2)   # m
+        # d32 = np.mean(size)
         std_size = np.std(np.array(size)) # m
 
         # Load 2nd file

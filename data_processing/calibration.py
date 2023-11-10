@@ -15,7 +15,7 @@ def calibration_fit(files):
         file_name = file[1] # -
         
         # Load file
-        path = r'u:\Bubble Column\Data\PXM419' + file_name + '.tdms'
+        path = r'u:\Bubble Column\Data\PXM419\231110 - Flow variation in Water (2)' + file_name + '.tdms'
         loaded_file = TdmsFile(path)
         
         # Obtain voltage
@@ -33,3 +33,4 @@ def calibration_fit(files):
     fit = np.polyfit(x, y, degree)
     return fit
 fit = calibration_fit(calibration_files)
+# print(fit)
