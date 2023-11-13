@@ -45,3 +45,21 @@ def measurement_data():
 
 def calibration_data():
     return calibration, calibration_path
+
+# %%
+# import pandas as pd
+# import openpyxl
+
+# fiber_probe_path = pd.read_excel('input_file.xlsx', sheet_name='Measurements', header=None, index_col=0, nrows=1)
+# fiber_probe_path = fiber_probe_path.to_numpy()[0][0]
+
+# pressure_sensor_path = pd.read_excel('input_file.xlsx', sheet_name='Measurements', header=0, index_col=0, nrows=1)
+# pressure_sensor_path = pressure_sensor_path.to_numpy()[0][0]
+
+# measurement = pd.read_excel('input_file.xlsx', sheet_name='Measurements', header=3)
+# measurement = measurement.to_numpy()
+# print(measurement)
+
+# cal = pd.read_excel('input_file.xlsx', sheet_name='Calibration')
+# print(cal)
+# %%

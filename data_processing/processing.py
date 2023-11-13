@@ -1,14 +1,24 @@
 import os
+import openpyxl
 import numpy as np
 import pandas as pd
 from nptdms import TdmsFile
 import matplotlib.pyplot as plt
 
-import inputs
 import calibration
 
-files, fiber_probe_path, pressure_sensor_path = inputs.measurement_data()
-calibration_files, calibration_path = inputs.calibration_data()
+excel_file = r'\\tudelft.net\student-homes\R\srommens\My Documents\GitHub\GM_pressure\data_processing\input_file.xlsx'
+fiber_probe_path = pd.read_excel(excel_file, sheet_name='Measurements', header=None, index_col=0, nrows=1)
+fiber_probe_path = fiber_probe_path.to_numpy()[0][0]
+pressure_sensor_path = pd.read_excel(excel_file, sheet_name='Measurements', header=0, index_col=0, nrows=1)
+pressure_sensor_path = pressure_sensor_path.to_numpy()[0][0]
+files = pd.read_excel(excel_file, sheet_name='Measurements', header=3)
+files = files.to_numpy()
+
+calibration_path = pd.read_excel(excel_file, sheet_name='Calibration', header=None, index_col=0, nrows=1)
+calibration_path = calibration_path.to_numpy()[0][0]
+calibration_files = pd.read_excel(excel_file, sheet_name='Calibration', header=2)
+calibration_files = calibration_files.to_numpy()
 
 rho = 997 # kg/m3, density of water
 g = 9.81  # m/s2, gravitational constant
@@ -93,8 +103,8 @@ pressure_sensor_results = pressure_sensor(files, fit, pressure_sensor_path)
 # Plot velocity and size
 fig, ax1 = plt.subplots()
 ax2 = ax1.twinx()
-# ax1.plot(   fiber_probe_results[:,0]/(Ac*60*1000), fiber_probe_results[:,1],     color="#69b3a2", lw=3)
-# ax1.errorbar(fiber_probe_results[:,0]/(Ac*60*1000), fiber_probe_results[:,1], yerr=fiber_probe_results[:,2], fmt='-o', color="#69b3a2")
+ax1.plot(   fiber_probe_results[:,0]/(Ac*60*1000), fiber_probe_results[:,1],     color="#69b3a2", lw=3)
+ax1.errorbar(fiber_probe_results[:,0]/(Ac*60*1000), fiber_probe_results[:,1], yerr=fiber_probe_results[:,2], fmt='-o', color="#69b3a2")
 ax2.plot(   fiber_probe_results[:,0]/(Ac*60*1000), fiber_probe_results[:,3]*1e3, color="#3399e6", lw=3)
 ax2.errorbar(fiber_probe_results[:,0]/(Ac*60*1000), fiber_probe_results[:,3]*1e3, yerr=fiber_probe_results[:,4]*1e3, fmt='-o', color="#3399e6")
 ax1.set_xlabel("Superficial gas velocity [m/s]")

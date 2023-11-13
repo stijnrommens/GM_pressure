@@ -1,9 +1,15 @@
 import os
+import openpyxl
 import numpy as np
+import pandas as pd
 from nptdms import TdmsFile
 
-import inputs
-calibration_files, calibration_path = inputs.calibration_data() 
+excel_file = r'\\tudelft.net\student-homes\R\srommens\My Documents\GitHub\GM_pressure\data_processing\input_file.xlsx'
+calibration_path = pd.read_excel(excel_file, sheet_name='Calibration', header=None, index_col=0, nrows=1)
+calibration_path = calibration_path.to_numpy()[0][0]
+calibration_files = pd.read_excel(excel_file, sheet_name='Calibration', header=2)
+calibration_files = calibration_files.to_numpy()
+
 
 def calibration_fit(files, folder):
     ''' Fit a linear line to the calibration data. '''
