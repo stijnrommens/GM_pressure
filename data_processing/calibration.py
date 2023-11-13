@@ -3,9 +3,9 @@ import numpy as np
 from nptdms import TdmsFile
 
 import inputs
-calibration_files = inputs.calibration_data() 
+calibration_files, calibration_path = inputs.calibration_data() 
 
-def calibration_fit(files):
+def calibration_fit(files, folder):
     ''' Fit a linear line to the calibration data. '''
     
     # Extract data
@@ -15,7 +15,7 @@ def calibration_fit(files):
         file_name = file[1] # -
         
         # Load file
-        path = r'u:\Bubble Column\Data\PXM419\231110 - Flow variation in Water (2)' + file_name + '.tdms'
+        path = folder + file_name + '.tdms'
         loaded_file = TdmsFile(path)
         
         # Obtain voltage
@@ -32,5 +32,5 @@ def calibration_fit(files):
     degree = 1
     fit = np.polyfit(x, y, degree)
     return fit
-fit = calibration_fit(calibration_files)
+fit = calibration_fit(calibration_files, calibration_path)
 # print(fit)
