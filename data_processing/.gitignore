@@ -1,5 +1,0 @@
-# ignore ALL .xlsx files
-*.xlsx
-
-__pycache__/
-*.py[cod]
