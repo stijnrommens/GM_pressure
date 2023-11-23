@@ -33,7 +33,9 @@ rho = 997 # kg/m3, density of water
 g = 9.81 # m/s2, gravitational constant
 radius = 150e-3/2 # m, inside radius column
 sensor_height = 748e-3 # m, height pressure sensor from sparger
-mw_additive = 58.44 # g/mol, molar weight of additive (if present)
+# mw_additive = 58.440 # g/mol, molar weight of NaCl 
+# mw_additive = 142.04 # g/mol, molar weight of Na2SO4 
+mw_additive = 53.491 # g/mol, molar weight of NH4Cl 
 
 Ac = np.pi*radius**2 # m2, cross-sectional area column
 volume_L = Ac*(sensor_height + liquid_height - depleted_height) # m3
