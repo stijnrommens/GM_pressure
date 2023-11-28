@@ -1,9 +1,11 @@
 import os
-# import openpyxl
+import openpyxl
 import numpy as np
 import pandas as pd
 from nptdms import TdmsFile
 
+
+# --- Calibration ---
 excel_file = r'\\tudelft.net\student-homes\R\srommens\My Documents\GitHub\GM_pressure\data_processing\input_file.xlsx'
 calibration_path = pd.read_excel(excel_file, sheet_name='Calibration', header=None, index_col=0, nrows=1)
 calibration_path = calibration_path.to_numpy()[0][0]
@@ -39,4 +41,8 @@ def calibration_fit(files, folder):
     fit = np.polyfit(x, y, degree)
     return fit
 fit = calibration_fit(calibration_files, calibration_path)
-# print(fit)
+
+
+def export_fit():
+    # print(fit)
+    return fit
