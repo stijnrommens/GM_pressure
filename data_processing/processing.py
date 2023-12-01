@@ -9,11 +9,11 @@ import calibration
 
 # --- Experiment ---
 excel_file = r'\\tudelft.net\student-homes\R\srommens\My Documents\GitHub\GM_pressure\data_processing\input_file.xlsx'
-fiber_probe_path = pd.read_excel(excel_file, sheet_name='Transition_NaCl', header=None, index_col=0, nrows=1)
+fiber_probe_path = pd.read_excel(excel_file, sheet_name='Transition_Na2SO4', header=None, index_col=0, nrows=1)
 fiber_probe_path = fiber_probe_path.to_numpy()[0][0]
-pressure_sensor_path = pd.read_excel(excel_file, sheet_name='Transition_NaCl', header=0, index_col=0, nrows=1)
+pressure_sensor_path = pd.read_excel(excel_file, sheet_name='Transition_Na2SO4', header=0, index_col=0, nrows=1)
 pressure_sensor_path = pressure_sensor_path.to_numpy()[0][0]
-files = pd.read_excel(excel_file, sheet_name='Transition_NaCl', header=3)
+files = pd.read_excel(excel_file, sheet_name='Transition_Na2SO4', header=3)
 files = files.to_numpy()
 
 # --- Constants ---

@@ -11,7 +11,7 @@ function mPBE!(du, u, p, t)
 
     Gads_epot = 0
     for ion in ion_tot
-        Gads_epot += ion[1]*exp(-(ion[2])(t) - ion[1] * u[1])        
+        Gads_epot += ion[1]*exp(-(ion[2])(t) - ion[1] * u[1]) 
     end
 
     du[1] = -u[2]
@@ -42,23 +42,23 @@ function pGM!(time, potential, p)
     conc_matrix = zeros(Float64, size(time)[1], length(ion_tot))
     for (index, t) in enumerate(time)
         for (index2, ion) in enumerate(ion_tot)
-            conc_matrix[index,index2] = exp(-(ion[2])(t)-ion[1]*potential(t)[1]) - 1
+            conc_matrix[index, index2] = exp(-(ion[2])(t)-ion[1]*potential(t)[1]) - 1 # Concentration profile [M/M] = [-]
 
         end
     end
 
     gammacon = zeros(1, length(ion_tot))
     for (index, ion) in enumerate(ion_tot)
-        gammacon[index] = trapz(time, conc_matrix[:, index])
+        gammacon[index] = trapz(time, conc_matrix[:, index]) # Surface excess over cocentration [M.Å/M] = [Å]
     end
 
-    tension = sum(gammacon)/(STconst*n_salts)
+    tension = sum(gammacon)/(STconst*n_salts) # [Å] / [M.m.Å/mN] -> [mN/m.M]
     gammacon_squared = sum(map(x->x^2, gammacon))
     pGM = 4Avog * ionS/n_salts*1000 * gammacon_squared*1e-20 / (beta*(10e-9)^2)
 
     return (gammacon, tension, pGM);
 end;
-time_range = range(0.01, boundary, 1000001);
+time_range = range(0.01, boundary, 100001);
 pGM_constants = (STconst, Avog, ionS, beta);
 pGM_param = (pGM_constants, ion_tot, n_salts);
 sol2 = pGM!(time_range, sol, pGM_param);

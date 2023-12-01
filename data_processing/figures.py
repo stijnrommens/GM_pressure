@@ -8,7 +8,7 @@ fiber_probe_results = processing.export_fiber_probe()
 velocity_dispersion = np.array((fiber_probe_results[:,2], fiber_probe_results[:,3])) # m/s
 size_dispersion = np.array((fiber_probe_results[:,5], fiber_probe_results[:,6])) # m
 pressure_sensor_results = processing.export_pressure_sensor()
-concentration = processing.mass2strength(fiber_probe_results[:,0], fiber_probe_results[:,-2], 1)
+concentration = processing.mass2strength(fiber_probe_results[:,0], fiber_probe_results[:,-2], 2)
 
 
 def size_vel_plot(x, y1, y1_error, y2, y2_error):
@@ -16,8 +16,8 @@ def size_vel_plot(x, y1, y1_error, y2, y2_error):
     
     fig, ax1 = plt.subplots()
     ax2 = ax1.twinx()
-    ax1.plot(    x, y1, color="#69b3a2", lw=3)
-    ax1.errorbar(x, y1, yerr=y1_error, fmt='-o', color="#69b3a2", capsize=3)
+    # ax1.plot(    x, y1, color="#69b3a2", lw=3)
+    # ax1.errorbar(x, y1, yerr=y1_error, fmt='-o', color="#69b3a2", capsize=3)
     ax2.plot(    x, y2, color="#3399e6", lw=3)
     ax2.errorbar(x, y2, yerr=y2_error, fmt='-o', color="#3399e6", capsize=3)
     ax1.set_xlabel("Concentration [M]")
