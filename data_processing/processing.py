@@ -8,12 +8,13 @@ import calibration
 
 
 # --- Experiment ---
+sheet_name = 'Holdup (3)'
 excel_file = r'\\tudelft.net\student-homes\R\srommens\My Documents\GitHub\GM_pressure\data_processing\input_file.xlsx'
-fiber_probe_path = pd.read_excel(excel_file, sheet_name='Transition_Na2SO4', header=None, index_col=0, nrows=1)
+fiber_probe_path = pd.read_excel(excel_file, sheet_name=sheet_name, header=None, index_col=0, nrows=1)
 fiber_probe_path = fiber_probe_path.to_numpy()[0][0]
-pressure_sensor_path = pd.read_excel(excel_file, sheet_name='Transition_Na2SO4', header=0, index_col=0, nrows=1)
+pressure_sensor_path = pd.read_excel(excel_file, sheet_name=sheet_name, header=0, index_col=0, nrows=1)
 pressure_sensor_path = pressure_sensor_path.to_numpy()[0][0]
-files = pd.read_excel(excel_file, sheet_name='Transition_Na2SO4', header=3)
+files = pd.read_excel(excel_file, sheet_name=sheet_name, header=3)
 files = files.to_numpy()
 
 # --- Constants ---
@@ -52,39 +53,41 @@ def fiber_probe(files, folder):
         void_fraction = sum(duration)/arrival.iloc[-1] # -
         
         # Check if variable has multiple measurement files + add to dataframes
-        prev_param_count = np.count_nonzero(files[:i+1,0] == param) # Check if same parameter has not been passed previously
-        if prev_param_count > 1:
-            continue
-        tot_param_count = np.count_nonzero(files[:,0] == param) # Get all files with same parameter
-        if tot_param_count > 1:
-            for k, extra_file in enumerate(files[i+1:i+tot_param_count]):
-                extra_param     = extra_file[0]
-                extra_file_name = extra_file[1]
-                extra_path = folder + extra_file_name + '.evt'
-                extra_df   = pd.read_csv(extra_path, sep='\t', decimal=',')
-                df = pd.concat([df, extra_df])
-                extra_stream_path = folder + extra_file_name + '_stream.evt'
-                extra_stream_df   = pd.read_csv(extra_stream_path, sep='\t', decimal=',')
-                arrival  = extra_stream_df['Arrival']
-                duration = extra_stream_df['Duration']
-                void_fraction += sum(duration)/arrival.iloc[-1] # -
+        # prev_param_count = np.count_nonzero(files[:i+1,0] == param) # Check if same parameter has not been passed previously
+        # if prev_param_count > 1:
+        #     continue
+        # tot_param_count = np.count_nonzero(files[:,0] == param) # Get all files with same parameter
+        # if tot_param_count > 1:
+        #     for k, extra_file in enumerate(files[i+1:i+tot_param_count]):
+        #         extra_param     = extra_file[0]
+        #         extra_file_name = extra_file[1]
+        #         extra_path = folder + extra_file_name + '.evt'
+        #         extra_df   = pd.read_csv(extra_path, sep='\t', decimal=',')
+        #         df = pd.concat([df, extra_df])
+        #         extra_stream_path = folder + extra_file_name + '_stream.evt'
+        #         extra_stream_df   = pd.read_csv(extra_stream_path, sep='\t', decimal=',')
+        #         arrival  = extra_stream_df['Arrival']
+        #         duration = extra_stream_df['Duration']
+        #         void_fraction += sum(duration)/arrival.iloc[-1] # -
                 
-        df_valid = df[df.Valid == 1] # Only valid bubbles
+        # df_valid = df[df.Valid == 1] # Only valid bubbles
 
         # Obtain velocity and size
-        velocity = df_valid['Veloc'].sort_values()
-        lower_velocity, median_velocity, upper_velocity = np.percentile(velocity, [25, 50, 75]) # m/s
-        lower_velocity = abs(lower_velocity - median_velocity) # m/s
-        upper_velocity = abs(upper_velocity - median_velocity) # m/s
+        # velocity = df_valid['Veloc'].sort_values()
+        # lower_velocity, median_velocity, upper_velocity = np.percentile(velocity, [25, 50, 75]) # m/s
+        # lower_velocity = abs(lower_velocity - median_velocity) # m/s
+        # upper_velocity = abs(upper_velocity - median_velocity) # m/s
+        lower_velocity, median_velocity, upper_velocity = 0,0,0
 
-        size = 1e-6*df_valid['Size'].sort_values()
+        # size = 1e-6*df_valid['Size'].sort_values()
         # d32 = sum(size**3)/sum(size**2)
-        lower_size, median_size, upper_size = np.percentile(size, [25, 50, 75]) # m
-        lower_size = abs(lower_size - median_size) # m
-        upper_size = abs(upper_size - median_size) # m
+        lower_size, median_size, upper_size = 0, 0, 0
+        # lower_size, median_size, upper_size = np.percentile(size, [25, 50, 75]) # m
+        # lower_size = abs(lower_size - median_size) # m
+        # upper_size = abs(upper_size - median_size) # m
 
         # Obtain average gas holdup
-        void_fraction /= tot_param_count # -
+        # void_fraction /= tot_param_count # -
         
         results.append([param, median_velocity, lower_velocity, upper_velocity, median_size, lower_size, upper_size, volume_L, void_fraction])
     return np.array(results)
@@ -116,7 +119,7 @@ def pressure_sensor(files, folder, fit):
         gas_height = fit[0]*mean_voltage + fit[1] # m
         volume_L = Ac * sensor_height + depleted_height + density_height # m3
         volume_G = Ac * (gas_height - liquid_height) # m3
-        holdup   = volume_G/volume_L # -
+        holdup   = (volume_L + volume_G)/volume_L -1 # -
         
         # Check if variable has multiple measurement files + add to holdup
         prev_param_count = np.count_nonzero(files[:i+1,0] == param) # Check if same parameter has not been passed previously
@@ -139,7 +142,7 @@ def pressure_sensor(files, folder, fit):
                 gas_height   = fit[0]*mean_voltage + fit[1]
                 volume_L = Ac * sensor_height + depleted_height + density_height # m3
                 volume_G = Ac * (gas_height - liquid_height) # m3
-                holdup  += volume_G/volume_L # -
+                holdup  += (volume_L + volume_G)/volume_L -1 # -
         
         # Obtain average gas holdup
         holdup /= tot_param_count # -
@@ -154,6 +157,13 @@ def mass2strength(param, volume_L, valence):
     ''' Run this function to convert mass (an expimental variable) -> ionic strength. Can also be used to obtain concentration (use valence=1). '''
     conc = param / mw_additive / (1000*volume_L) # M, convert added weight to concentration
     return conc * valence**2 # M, concentration to ionic strength
+
+def diameter2percent(param):
+    ''' Run this function to convert diamter (an expimental result) -> percentage. '''
+    max_value = max(param)
+    min_value = min(param)
+    scale = max_value - min_value
+    return 100* (param - min_value) / scale
 
 def export_fiber_probe():
     return fiber_probe_results

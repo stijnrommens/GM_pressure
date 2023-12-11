@@ -39,6 +39,7 @@ def calibration_fit(files, folder):
     x, y = data_to_fit[:,1], data_to_fit[:,0]
     degree = 1
     fit = np.polyfit(x, y, degree)
+        
     return fit
 fit = calibration_fit(calibration_files, calibration_path)
 
