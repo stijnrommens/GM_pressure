@@ -4,11 +4,14 @@ import numpy as np
 import pandas as pd
 from nptdms import TdmsFile
 
+
+# --- Processed Calibration ---
 import calibration
+fit = calibration.export_fit()
 
 
 # --- Experiment ---
-sheet_name = 'Holdup (3)'
+sheet_name = 'Transition_NaCl'
 excel_file = r'\\tudelft.net\student-homes\R\srommens\My Documents\GitHub\GM_pressure\data_processing\input_file.xlsx'
 fiber_probe_path = pd.read_excel(excel_file, sheet_name=sheet_name, header=None, index_col=0, nrows=1)
 fiber_probe_path = fiber_probe_path.to_numpy()[0][0]
@@ -17,19 +20,21 @@ pressure_sensor_path = pressure_sensor_path.to_numpy()[0][0]
 files = pd.read_excel(excel_file, sheet_name=sheet_name, header=3)
 files = files.to_numpy()
 
+
 # --- Constants ---
 rho = 997 # kg/m3, density of water
 g = 9.81 # m/s2, gravitational constant
 radius = 150e-3/2 # m, inside radius column
 sensor_height = 748e-3 # m, height pressure sensor from sparger
-# mw_additive = 58.440 # g/mol, molar weight of NaCl 
-mw_additive = 142.04 # g/mol, molar weight of Na2SO4 
+mw_additive = 58.440 # g/mol, molar weight of NaCl 
+# mw_additive = 142.04 # g/mol, molar weight of Na2SO4 
 # mw_additive = 53.491 # g/mol, molar weight of NH4Cl 
 # mw_additive = 132.14 # g/mol, molar weight of (NH4)2SO4
 
 Ac = np.pi*radius**2 # m2, cross-sectional area column
 
 
+# --- Processing ---
 def fiber_probe(files, folder):
     ''' From the measurements, extract fiber probe information. '''
     
@@ -53,41 +58,43 @@ def fiber_probe(files, folder):
         void_fraction = sum(duration)/arrival.iloc[-1] # -
         
         # Check if variable has multiple measurement files + add to dataframes
-        # prev_param_count = np.count_nonzero(files[:i+1,0] == param) # Check if same parameter has not been passed previously
-        # if prev_param_count > 1:
-        #     continue
-        # tot_param_count = np.count_nonzero(files[:,0] == param) # Get all files with same parameter
-        # if tot_param_count > 1:
-        #     for k, extra_file in enumerate(files[i+1:i+tot_param_count]):
-        #         extra_param     = extra_file[0]
-        #         extra_file_name = extra_file[1]
-        #         extra_path = folder + extra_file_name + '.evt'
-        #         extra_df   = pd.read_csv(extra_path, sep='\t', decimal=',')
-        #         df = pd.concat([df, extra_df])
-        #         extra_stream_path = folder + extra_file_name + '_stream.evt'
-        #         extra_stream_df   = pd.read_csv(extra_stream_path, sep='\t', decimal=',')
-        #         arrival  = extra_stream_df['Arrival']
-        #         duration = extra_stream_df['Duration']
-        #         void_fraction += sum(duration)/arrival.iloc[-1] # -
+        prev_param_count = np.count_nonzero(files[:i+1,0] == param) # Check if same parameter has not been passed previously
+        if prev_param_count > 1:
+            continue
+        tot_param_count = np.count_nonzero(files[:,0] == param) # Get all files with same parameter
+        if tot_param_count > 1:
+            for k, extra_file in enumerate(files[i+1:i+tot_param_count]):
+                extra_param     = extra_file[0]
+                extra_file_name = extra_file[1]
+                extra_path = folder + extra_file_name + '.evt'
+                extra_df   = pd.read_csv(extra_path, sep='\t', decimal=',')
+                df = pd.concat([df, extra_df])
+                extra_stream_path = folder + extra_file_name + '_stream.evt'
+                extra_stream_df   = pd.read_csv(extra_stream_path, sep='\t', decimal=',')
+                arrival  = extra_stream_df['Arrival']
+                duration = extra_stream_df['Duration']
+                void_fraction += sum(duration)/arrival.iloc[-1] # -
                 
-        # df_valid = df[df.Valid == 1] # Only valid bubbles
+        df_valid = df[df.Valid == 1] # Only valid bubbles
 
         # Obtain velocity and size
-        # velocity = df_valid['Veloc'].sort_values()
-        # lower_velocity, median_velocity, upper_velocity = np.percentile(velocity, [25, 50, 75]) # m/s
-        # lower_velocity = abs(lower_velocity - median_velocity) # m/s
-        # upper_velocity = abs(upper_velocity - median_velocity) # m/s
-        lower_velocity, median_velocity, upper_velocity = 0,0,0
+        velocity = df_valid['Veloc'].sort_values()
+        lower_velocity, median_velocity, upper_velocity = np.percentile(velocity, [25, 50, 75]) # m/s
+        lower_velocity = abs(lower_velocity - median_velocity) # m/s
+        upper_velocity = abs(upper_velocity - median_velocity) # m/s
+        # lower_velocity, median_velocity, upper_velocity = 0,0,0
 
-        # size = 1e-6*df_valid['Size'].sort_values()
-        # d32 = sum(size**3)/sum(size**2)
-        lower_size, median_size, upper_size = 0, 0, 0
-        # lower_size, median_size, upper_size = np.percentile(size, [25, 50, 75]) # m
-        # lower_size = abs(lower_size - median_size) # m
-        # upper_size = abs(upper_size - median_size) # m
+        size = 1e-6*df_valid['Size'].sort_values()
+        d32 = sum(size**3)/sum(size**2)
+        # lower_size, median_size, upper_size = 0, 0, 0
+        lower_size, median_size, upper_size = np.percentile(size, [25, 50, 75]) # m
+        lower_size = abs(lower_size - median_size) # m
+        upper_size = abs(upper_size - median_size) # m
+        # median_size = np.mean(size)
+        # median_size = d32
 
         # Obtain average gas holdup
-        # void_fraction /= tot_param_count # -
+        void_fraction /= tot_param_count # -
         
         results.append([param, median_velocity, lower_velocity, upper_velocity, median_size, lower_size, upper_size, volume_L, void_fraction])
     return np.array(results)
@@ -149,7 +156,6 @@ def pressure_sensor(files, folder, fit):
         
         results.append([param, holdup])
     return np.array(results)
-fit = calibration.export_fit()
 pressure_sensor_results = pressure_sensor(files, pressure_sensor_path, fit)
 
 
