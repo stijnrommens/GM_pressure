@@ -42,14 +42,18 @@ def fiber_probe(files, folder):
     for i, file in enumerate(files):
         param = file[0]     # height, weight, etc.
         file_name = file[1] # -
+        # print(type(file_name))
         
-        liquid_height   = file[3] # m, water height from sensor with no flow
-        depleted_height = file[4] # m, correction for water loss in bottom port (0.104 mm/min)
-        density_height  = file[5] # m, correction for density increase by salt
-        volume_L = Ac*(sensor_height + liquid_height - depleted_height) # m3
+        # liquid_height   = file[3] # m, water height from sensor with no flow
+        # depleted_height = file[4] # m, correction for water loss in bottom port (0.104 mm/min)
+        # density_height  = file[5] # m, correction for density increase by salt
+        # volume_L = Ac*(sensor_height + liquid_height - depleted_height) # m3
+        volume_L = file[5]/1000 # m3
         
         # Load the measurement files in dataframes + get void fraction
         path = folder + file_name + '.evt'
+        # print(type(path))
+
         df = pd.read_csv(path, sep='\t', decimal=',')
         path_stream = folder + file_name + '_stream.evt'
         df_stream = pd.read_csv(path_stream, sep='\t', decimal=',')
@@ -76,22 +80,26 @@ def fiber_probe(files, folder):
                 void_fraction += sum(duration)/arrival.iloc[-1] # -
                 
         df_valid = df[df.Valid == 1] # Only valid bubbles
-
+        df_valid = df_valid[df_valid.Size == df_valid.SizeOut]
+        # print(df_valid)
+        # print(np.mean(df_test['Size']))
         # Obtain velocity and size
         velocity = df_valid['Veloc'].sort_values()
-        lower_velocity, median_velocity, upper_velocity = np.percentile(velocity, [25, 50, 75]) # m/s
+        lower_velocity, median_velocity, upper_velocity = np.percentile(velocity, [45, 50, 55]) # m/s
         lower_velocity = abs(lower_velocity - median_velocity) # m/s
         upper_velocity = abs(upper_velocity - median_velocity) # m/s
         # lower_velocity, median_velocity, upper_velocity = 0,0,0
 
         size = 1e-6*df_valid['Size'].sort_values()
+        # print(size.min()/1e-6)
         d32 = sum(size**3)/sum(size**2)
         # lower_size, median_size, upper_size = 0, 0, 0
-        lower_size, median_size, upper_size = np.percentile(size, [25, 50, 75]) # m
+        lower_size, median_size, upper_size = np.percentile(size, [45, 50, 55]) # m
         lower_size = abs(lower_size - median_size) # m
         upper_size = abs(upper_size - median_size) # m
-        # median_size = np.mean(size)
+        median_size = np.mean(size)
         # median_size = d32
+        # print(median_size*1e6)
 
         # Obtain average gas holdup
         void_fraction /= tot_param_count # -
@@ -103,7 +111,7 @@ fiber_probe_results = fiber_probe(files, fiber_probe_path)
 
 def pressure_sensor(files, folder, fit):
     ''' From the measured mean voltage and the fitted line, obtain the gas holdup. '''
-    
+    test=239.5815655175651102
     results = []
     for i, file in enumerate(files):
         param = file[0]     # height, flow, etc.
@@ -111,7 +119,8 @@ def pressure_sensor(files, folder, fit):
         
         liquid_height   = file[3] # m, water height from sensor with no flow
         depleted_height = file[4] # m, correction for water loss in bottom port (0.104 mm/min)
-        density_height  = file[5] # m, correction for density increase by salt
+        density_height  = file[7] # m, correction for density increase by salt
+        # volume_L = file[8]/1000 # m3 
         
         # Load file
         path = folder + file_name + '.tdms'
@@ -124,9 +133,17 @@ def pressure_sensor(files, folder, fit):
         mean_voltage = np.mean(voltage) # V
         
         gas_height = fit[0]*mean_voltage + fit[1] # m
-        volume_L = Ac * sensor_height + depleted_height + density_height # m3
-        volume_G = Ac * (gas_height - liquid_height) # m3
-        holdup   = (volume_L + volume_G)/volume_L -1 # -
+        # L_height = liquid_height+depleted_height+density_height # m
+        void_height = gas_height-depleted_height-density_height
+        volume_L = Ac * (sensor_height) # m3
+        # volume_G = Ac * (gas_height - (liquid_height - depleted_height + density_height)) # m3
+        volume_G = Ac*(gas_height-(liquid_height+depleted_height+density_height))  # m3
+        # print(gas_height, gas_height - (liquid_height-depleted_height))
+        # holdup   = (volume_L + volume_G)/volume_L -1 # -
+        holdup   = (volume_G)/(volume_L) # -
+        # print((gas_height-depleted_height-density_height)*1e3)
+        # print(gas_height)
+        # test=gas_height*1e3
         
         # Check if variable has multiple measurement files + add to holdup
         prev_param_count = np.count_nonzero(files[:i+1,0] == param) # Check if same parameter has not been passed previously
@@ -139,7 +156,8 @@ def pressure_sensor(files, folder, fit):
                 extra_file_name = extra_file[2]
                 liquid_height   = extra_file[3] # m, water height from sensor with no flow
                 depleted_height = extra_file[4] # m, correction for water loss in bottom port (0.104 mm/min)
-                density_height  = extra_file[5] # m, correction for density increase by salt
+                density_height  = extra_file[7] # m, correction for density increase by salt
+                # volume_L = excel_file[8]/1000 # m3
                 extra_path = folder + extra_file_name + '.tdms'
                 extra_loaded_file = TdmsFile(extra_path)
                 for group in extra_loaded_file.groups():
@@ -147,12 +165,14 @@ def pressure_sensor(files, folder, fit):
                 voltage = df['Dev1/ai1']
                 mean_voltage = np.mean(voltage) # V
                 gas_height   = fit[0]*mean_voltage + fit[1]
-                volume_L = Ac * sensor_height + depleted_height + density_height # m3
-                volume_G = Ac * (gas_height - liquid_height) # m3
-                holdup  += (volume_L + volume_G)/volume_L -1 # -
+                # volume_L = Ac * sensor_height + depleted_height + density_height # m3
+                # volume_G = Ac * (gas_height - (liquid_height - depleted_height + density_height)) # m3
+                volume_G = Ac*(gas_height+ sensor_height) # m3
+                # holdup  += (volume_L + volume_G)/volume_L -1 # -
+                # holdup   += (volume_G-volume_L)/(volume_G)
         
         # Obtain average gas holdup
-        holdup /= tot_param_count # -
+        # holdup /= tot_param_count # -
         
         results.append([param, holdup])
     return np.array(results)
