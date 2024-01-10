@@ -1,7 +1,37 @@
-cd(@__DIR__)
-using Pkg
-Pkg.activate(".")
 using DifferentialEquations, Trapz #,BenchmarkTools
+
+
+### ---------- Check input ----------
+print("Solver messages:")
+function check_input(ion_tot, n_salts)
+    charge_tot = 0
+    state = true
+
+    for (index, ion) in enumerate(ion_tot)
+        charge_tot += ion[1]
+    end
+
+    if charge_tot != 0
+        print("\n   ✖ Warning: Sum of charges is NOT 0!")
+        state = false
+    else
+        print("\n   ✔ Sum of charges is 0.")
+    end
+
+    if length(ion_tot)/n_salts > 3
+        print("\n   ✖ Warning: Number of salts is NOT correct!")
+        state = false
+    else
+        print("\n   ✔ Number of salts is correct.")
+    end
+    return state
+end;
+state = check_input(ion_tot, n_salts)
+if state != true
+    print("\n\n")
+    error("Inputs NOT correct!")
+end
+
 
 
 ### ---------- modified Poisson-Boltzmann equation ----------
@@ -29,7 +59,7 @@ u0  = [0.0, 0.0];
 mBPE_constants = (beta, elc, epsilon_o, epsilon_w, rho_ion);
 mPBE_param = (mBPE_constants, ion_tot, n_salts);
 bvp = BVProblem(mPBE!, bc!, u0, tspan, mPBE_param);
-sol = solve(bvp, Shooting(RadauIIA5(autodiff=false)));
+sol = solve(bvp, Shooting(RadauIIA5(autodiff=false)), abstol=1e-12, reltol= 1e-6);
 # @btime sol = solve(bvp, Shooting(RadauIIA5(autodiff=false)))
 
 
@@ -48,18 +78,26 @@ function pGM!(time, potential, p)
     end
 
     gammacon = zeros(1, length(ion_tot))
+    gammacon_q = zeros(1, length(ion_tot))
     for (index, ion) in enumerate(ion_tot)
         gammacon[index] = trapz(time, conc_matrix[:, index]) # Surface excess over cocentration [M.Å/M] = [Å]
+        gammacon_q[index] = gammacon[index]*ion[1]
+    end
+
+    if sum(gammacon_q)/sum(gammacon) > 0.05
+        print("\n   ✖ Warning: Electroneutrality condition is NOT satisfied!")
+    else
+        print("\n   ✔ Electroneutrality condition is satisfied.")
     end
 
     tension = sum(gammacon)/(STconst*n_salts) # [Å] / [M.m.Å/mN] -> [mN/m.M]
     gammacon_squared = sum(map(x->x^2, gammacon))
     pGM = 4Avog * ionS/n_salts*1000 * gammacon_squared*1e-20 / (beta*(10e-9)^2)
 
-    return (gammacon, tension, pGM);
+    return (gammacon_q, tension, pGM);
 end;
 time_range = range(0.01, boundary, 100001);
 pGM_constants = (STconst, Avog, ionS, beta);
 pGM_param = (pGM_constants, ion_tot, n_salts);
 sol2 = pGM!(time_range, sol, pGM_param);
-# @btime sol2 = pGM!(time_range, sol, param, ionS)
+# @btime sol2 = pGM!(time_range, sol, pGM_param)
