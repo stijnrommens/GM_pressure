@@ -3,6 +3,7 @@ import openpyxl
 import numpy as np
 import pandas as pd
 from nptdms import TdmsFile
+from scipy.stats import norm, t, iqr
 
 
 # --- Processed Calibration ---
@@ -11,7 +12,7 @@ fit = calibration.export_fit()
 
 
 # --- Experiment ---
-sheet_name = 'Transition_NaCl'
+sheet_name = 'Transition_(NH4)2SO4'
 excel_file = r'\\tudelft.net\student-homes\R\srommens\My Documents\GitHub\GM_pressure\data_processing\input_file.xlsx'
 fiber_probe_path = pd.read_excel(excel_file, sheet_name=sheet_name, header=None, index_col=0, nrows=1)
 fiber_probe_path = fiber_probe_path.to_numpy()[0][0]
@@ -26,10 +27,10 @@ rho = 997 # kg/m3, density of water
 g = 9.81 # m/s2, gravitational constant
 radius = 150e-3/2 # m, inside radius column
 sensor_height = 748e-3 # m, height pressure sensor from sparger
-mw_additive = 58.440 # g/mol, molar weight of NaCl 
+# mw_additive = 58.440 # g/mol, molar weight of NaCl 
 # mw_additive = 142.04 # g/mol, molar weight of Na2SO4 
 # mw_additive = 53.491 # g/mol, molar weight of NH4Cl 
-# mw_additive = 132.14 # g/mol, molar weight of (NH4)2SO4
+mw_additive = 132.14 # g/mol, molar weight of (NH4)2SO4
 
 Ac = np.pi*radius**2 # m2, cross-sectional area column
 
@@ -93,13 +94,32 @@ def fiber_probe(files, folder):
         size = 1e-6*df_valid['Size'].sort_values()
         # print(size.min()/1e-6)
         d32 = sum(size**3)/sum(size**2)
-        # lower_size, median_size, upper_size = 0, 0, 0
-        lower_size, median_size, upper_size = np.percentile(size, [45, 50, 55]) # m
+        lower_size, upper_size = 0, 0
+        lower_size, median_size, upper_size = np.percentile(size, [25, 50, 75]) # m
         lower_size = abs(lower_size - median_size) # m
         upper_size = abs(upper_size - median_size) # m
+        # print(upper_size)
+        # print(median_size)
+        # print(lower_size)
         median_size = np.mean(size)
         # median_size = d32
         # print(median_size*1e6)
+        
+        # log_size = (size)
+        # log_mean = np.mean(log_size)
+        # log_std = np.std(log_size, ddof=1)
+        # # lognormal_mean = np.exp(log_mean + 0.5*log_std**2)
+        # # lognormal_std = np.sqrt((np.exp(log_std**2) - 1) * np.exp(2*log_mean + log_std**2))
+        # sem = log_std/np.sqrt(len(log_size))
+        # confidence_level = 0.95
+        # margin = sem*t.ppf((1+confidence_level) / 2, len(log_size)-1)
+        # median_size = log_mean
+        # lower_size = margin
+        # upper_size = margin
+        # print(margin*1e3)
+        # print(iqr(size))
+        # print(upper_size-lower_size)
+        # print(' ')
 
         # Obtain average gas holdup
         void_fraction /= tot_param_count # -
@@ -170,6 +190,7 @@ def pressure_sensor(files, folder, fit):
                 volume_G = Ac*(gas_height+ sensor_height) # m3
                 # holdup  += (volume_L + volume_G)/volume_L -1 # -
                 # holdup   += (volume_G-volume_L)/(volume_G)
+                # holdup += volume_G
         
         # Obtain average gas holdup
         # holdup /= tot_param_count # -

@@ -38,10 +38,11 @@ def ctrans_regression(x, y):
     ''' Make a regression of the varied salt concentration measurements from the fiber probe. '''
     
     def func(x, a, b, c, d): 
-        return (1 + np.exp(-b * (x - c)))/a + d # inverse logistic function
+        return a / (1 + np.exp(-b * (x - c))) + d
+        # return (1 + np.exp(-b * (x - c)))/a + d # inverse logistic function
     popt, pcov = curve_fit(func, x, y)
 
-    X = np.geomspace(1e-5, 10, num=201)
+    X = np.geomspace(1e-5, 1, num=201)
     # X = np.linspace(0, 0.5, num=401)
     Y = func(X, *popt)
     
@@ -50,7 +51,8 @@ def ctrans_regression(x, y):
     ss_tot = np.sum( (y-np.mean(y))**2 )
     r_squared = 1 - (ss_res/ss_tot)
     print(f'R2 = {r_squared:.3f}')
-    cct = Y[-1] + (Y[0] - Y[-1])*0.05 # % of original value (example: 95% inhibition = 5% of original)
+    print(f'Fit = {popt[0]:.2f} / ( 1 + exp[-{popt[1]:.2f} * (x - {popt[2]:.2f})] ) + {popt[3]:.2f}')
+    cct = Y[-1] + (Y[0] - Y[-1])*0.5 # % of original value (example: 95% inhibition = 5% of original)
     c_trans =  [np.interp( cct, Y[::-1],X[::-1]), cct ] # M, transition concentration
 
     print(f'Transition concentration = {1e3*c_trans[0]:.3f} mM')
@@ -76,6 +78,7 @@ def size_vel_plot(x, y, y_error, X, Y, c_trans):
     # fig.suptitle("Bubble properties", fontsize=20)
     plt.show()
     return
+# size_vel_plot(x_axis, y_axis2, errorbar_axis2, 1, 1, 1)
 size_vel_plot(x_axis, y_axis2, errorbar_axis2, regression_data[0], regression_data[1], regression_data[2])
 
 def holdup_plot(x, y1, y2):
@@ -93,7 +96,7 @@ def holdup_plot(x, y1, y2):
     plt.legend()
     plt.show()
     return 
-# holdup_plot(x_axis, y_axis4, y_axis3)
+holdup_plot(x_axis, y_axis4, y_axis3)
 
 
 def export_measurements():

@@ -43,7 +43,7 @@ def calibration_fit(files, folder):
         
     return fit
 fit = calibration_fit(calibration_files, calibration_path)
-print(fit)
+
 
 def export_fit():
     # print(fit)
