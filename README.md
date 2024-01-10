@@ -8,7 +8,7 @@ The model needs the following input:
 - hydrated radius and charge of each ion;
 - adsorption energy function as a function of distance from the gas-liquid interface, for each ion.
 
-As output, the electrostatic potential of salts at the interface is obtained. This can be used to calculate the surface excess of ions, which results in the **Gibbs-Marangoni pressure**. \
+As output, the electrostatic potential of salts at the interface is obtained. This can be used to calculate the surface excess of ions, which results in the **Gibbs-Marangoni pressure**.
 
 Sources:\
 [1] Duignan, T. T. (2021). The surface potential explains ion specific bubble coalescence inhibition. _Journal of Colloid and Interface Science, 600_, 338–343. https://doi.org/10.1016/j.jcis.2021.04.144
