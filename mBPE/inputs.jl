@@ -36,7 +36,7 @@ end;
 function U_alpha(t, ah, kappa, W)
     if t < 1e10ah # while inside hydrated ion radius
         U = 1000
-    else # outside of radius
+    else          # outside of radius
         U = W*1e10ah/t * exp(-2kappa * (1e-10t - ah))
     end
 end;
@@ -50,7 +50,7 @@ W_Cl   = W(q_Cl, r_Cl);
 U_Cl(t) = U_alpha(t, r_Cl, kappa, W_Cl);
 Cl   = (q_Cl, U_Cl);
 
-q_NH4, r_NH4 = +1, 2.40e-10
+q_NH4, r_NH4 = +1, 2.50e-10 # Kielland (1937)
 W_NH4 = W(q_NH4, r_NH4);
 U_NH4(t) = U_alpha(t, r_NH4, kappa, W_NH4);
 NH4 = (q_NH4, U_NH4);
@@ -63,8 +63,8 @@ SO4 = (q_SO4, U_SO4);
 
 
 ### ---------- Ions/salts input ----------
-ion_tot = (Na, Cl); # The ions composing the salts
-n_salts = 1 # Number of salts
+ion_tot = (Na, Na, SO4, NH4, Cl); # The ions composing the salts
+n_salts = 2                       # Number of salts
 
 
 
