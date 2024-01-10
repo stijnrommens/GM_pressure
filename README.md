@@ -21,9 +21,14 @@ Julia needs to be installed. The attached _.tomls_ in this repo should automatic
 
 # How it works
 The input can be given in the file _input.jl_:
-- At the top, the ionic strenght (**ionS**) needs to be given. This value, together with the predefined constants, is then used to calculate the required parameters.
-- The next part of the input file asks for the adsorption energy function (**U**), hydrated radius (**r**) and charge (**q**) of each ion. The U-function for alpha ions is already given, together with a couple of input examples. The _misc.jl_ file also contains U-functions for the beta ions H<sup>+</sup> and ClO<sub>4</sub><sup>-</sup>.
-- Lastly, the total ionic composition (**ion_tot**) and the number of salts (**n_salts**) need to be filled in. As an example, a mixture conposed of Na<sub>2</sub>SO<sub>4</sub> and NH<sub>4</sub>Cl has ion_tot = (Na, Na, SO<sub>4</sub>, NH<sub>4</sub>, Cl) and n_salts = 2. The ion_tot tupple can be extended as much as possible.
+- At the top, the ionic strenght (**ionS**) needs to be given. This value, together with the predefined constants, is then used to calculate the required parameters. \
+  <img src="https://github.com/stijnrommens/GM_pressure/blob/main/ionS_fig.PNG" width="400">
+- The next part of the input file asks for the adsorption energy function (**U**), hydrated radius (**r**) and charge (**q**) of each ion. The U-function for α-ions is already given, together with a couple of input examples. The _misc.jl_ file also contains U-functions for the β-ions H<sup>+</sup> and ClO<sub>4</sub><sup>-</sup>. \
+  <img src="https://github.com/stijnrommens/GM_pressure/blob/main/Uqr_fig.PNG" width="400">
+- Lastly, the total ionic composition (**ion_tot**) and the number of salts (**n_salts**) need to be filled in. As an example, a mixture conposed of Na<sub>2</sub>SO<sub>4</sub> and NH<sub>4</sub>Cl has ion_tot = (Na, Na, SO<sub>4</sub>, NH<sub>4</sub>, Cl) and n_salts = 2. The ion_tot tupple can be extended as much as possible. \
+  <img src="https://github.com/stijnrommens/GM_pressure/blob/main/ntot_fig.PNG" width="500">
+- The file also prints the results and allows to create plots. To make plots, the code at the bottom of the script can be uncommented (also don't forget the import at the top of the file!).
+
 
 # Debugging
 It may happen that certain scenarios (high ionic strenght) result in warnings/errors from the BVP-solver. This will most likely return values which go to infinity. The following solver parameters in _solver.jl_ can be tweaked:
