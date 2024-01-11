@@ -10,7 +10,7 @@ ionS = 0.1; # Ionic strength [M]
 
 
 ### ---------- Constants ----------
-kB = 1.3806503e-23;         # Boltzmann constant [J/K]
+kB = 1.3806503e-23;         # Boltzmann constant [J/K]k
 elc = 1.6021765e-19;        # Elementary charge  [C]
 Avog = 6.0221415e23;        # Avogadro constant  [1/mol]
 epsilon_o = 8.85418782e-12; # Vacuum's permittivity [F/m]
@@ -72,7 +72,7 @@ n_salts = 2;                      # Number of salts
 include("solver.jl")
 
 print("\n\nResults:")
-print("\n   • Surface excess × charge  = ", round.(sol2[1]; digits=3), " Å")
+print("\n   • Surface excess × charge  = ", round.(sol2[1]; digits=3), " = ", round.(sum(sol2[1]); digits=3), " Å")
 @printf("\n   • Surface tension          = %.3f mN/m.M", sol2[2])
 @printf("\n   • Electrostatic potential  = %.3e mV", 1000*last(sol.u)[1])
 @printf("\n   • Gibbs-Marangoni pressure = %.3f Pa", sol2[3])

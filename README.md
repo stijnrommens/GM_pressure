@@ -29,8 +29,8 @@ The input can be given in the file _input.jl_:
 
 # Debugging & Tweaking
 It may happen that certain scenarios (e.g. high ionic strenghts) result in warnings/errors from the BVP-solver. This will most likely return values which go to infinity. The following solver arguments in _solver.jl_ can be changed:
-- absolute tolerance (**abstol**)
-- relative tolerance (**reltol**)
-- time span (**tspan**)
+- absolute tolerance (**abstol**); default is 1e-6
+- relative tolerance (**reltol**); default is 1e-3
+- time span (**tspan**); default is 10x Debye length
 
 Changing these arguments also allow to increase speed, as long as the results are accurate enough. Accuracy/validity can be tested by checking if the surface excess of all ions fulfills the **electroneutrality condition** ($\sum$ surface excesses = 0).
