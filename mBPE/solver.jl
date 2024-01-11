@@ -1,4 +1,4 @@
-using DifferentialEquations, Trapz #,BenchmarkTools
+using BoundaryValueDiffEq, OrdinaryDiffEq, Trapz #,BenchmarkTools
 
 
 ### ---------- Check input ----------
@@ -13,25 +13,19 @@ function check_input(ion_tot, n_salts)
 
     if charge_tot != 0
         print("\n   ✖ Warning: Sum of charges is NOT 0!")
-        state = false
+        error("Inputs NOT correct!")
     else
         print("\n   ✔ Sum of charges is 0.")
     end
 
     if length(ion_tot)/n_salts > 3
-        print("\n   ✖ Warning: Number of salts is NOT correct!")
-        state = false
+        print("\n   ✖ Warning: Number of salts may NOT correct!")
     else
         print("\n   ✔ Number of salts is correct.")
     end
     return state
 end;
-state = check_input(ion_tot, n_salts)
-if state != true
-    print("\n\n")
-    error("Inputs NOT correct!")
-end
-
+check_input(ion_tot, n_salts)
 
 
 ### ---------- modified Poisson-Boltzmann equation ----------

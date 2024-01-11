@@ -1,7 +1,7 @@
 cd(@__DIR__)
 using Pkg
 Pkg.activate(".")
-using QuadGK, Printf #, Plots
+using Printf, QuadGK #,Plots
 
 
 ### ---------- Concentration input ----------
@@ -40,22 +40,22 @@ function U_alpha(t, ah, kappa, W)
         U = W*1e10ah/t * exp(-2kappa * (1e-10t - ah))
     end
 end;
-q_Na, r_Na = +1, 2.50e-10 # Levin (2009)
+q_Na, r_Na = +1, 2.50e-10; # Levin (2009)
 W_Na   = W(q_Na, r_Na);
 U_Na(t) = U_alpha(t, r_Na, kappa, W_Na);
 Na   = (q_Na, U_Na);
 
-q_Cl, r_Cl = -1, 2.00e-10 # Levin (2010)
+q_Cl, r_Cl = -1, 2.00e-10; # Levin (2010)
 W_Cl   = W(q_Cl, r_Cl);
 U_Cl(t) = U_alpha(t, r_Cl, kappa, W_Cl);
 Cl   = (q_Cl, U_Cl);
 
-q_NH4, r_NH4 = +1, 2.50e-10 # Kielland (1937)
+q_NH4, r_NH4 = +1, 2.50e-10; # Kielland (1937)
 W_NH4 = W(q_NH4, r_NH4);
 U_NH4(t) = U_alpha(t, r_NH4, kappa, W_NH4);
 NH4 = (q_NH4, U_NH4);
 
-q_SO4, r_SO4 = -2, 3.79e-10 # Levin (2010)
+q_SO4, r_SO4 = -2, 3.79e-10; # Levin (2010)
 W_SO4 = W(q_SO4, r_SO4);
 U_SO4(t) = U_alpha(t, r_SO4, kappa, W_SO4);
 SO4 = (q_SO4, U_SO4);
@@ -64,7 +64,7 @@ SO4 = (q_SO4, U_SO4);
 
 ### ---------- Ions/salts input ----------
 ion_tot = (Na, Na, SO4, NH4, Cl); # The ions composing the salts
-n_salts = 2                       # Number of salts
+n_salts = 2;                      # Number of salts
 
 
 
