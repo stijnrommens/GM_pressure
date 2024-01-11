@@ -14,7 +14,7 @@ Sources:\
 [1] Duignan, T. T. (2021). The surface potential explains ion specific bubble coalescence inhibition. _Journal of Colloid and Interface Science, 600_, 338–343. https://doi.org/10.1016/j.jcis.2021.04.144
 
 # Prerequisites
-Julia needs to be installed. The attached _.tomls_ in this repo should automatically install the required packages.
+Julia (v1.9) needs to be installed. The attached _.tomls_ in this repo should automatically install the required packages.
 
 # How it works
 The input can be given in the file _input.jl_:
