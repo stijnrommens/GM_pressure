@@ -10,12 +10,13 @@ ionS = 0.1; # Ionic strength [M]
 
 
 ### ---------- Constants ----------
-kB = 1.3806503e-23;         # Boltzmann constant [J/K]k
+kB = 1.3806503e-23;         # Boltzmann constant [J/K]
 elc = 1.6021765e-19;        # Elementary charge  [C]
 Avog = 6.0221415e23;        # Avogadro constant  [1/mol]
 epsilon_o = 8.85418782e-12; # Vacuum's permittivity [F/m]
 epsilon_w = 78.3;           # Water's permittivity [F/m]
 T = 297.15;                 # Temperature [K]
+h = 10e-9;                  # Separation distance [nm] where pGM is calculated at in Duignan (2021)
 
 rho_ion = ionS * Avog * 1000;   # Ion density [particles/L] -> [particles/m3]
 beta = 1 / (kB * T);            # Thermodynamic beta [1/J] = [s2/kg.m2] = [1/N.m]
@@ -24,23 +25,31 @@ kappa = sqrt(2 * elc^2 * Avog * ionS*1000 * beta / (epsilon_w*epsilon_o)); # Inv
 boundary = 10e10/kappa;         # 10x Debye lenght [Å]
 
 
-f(k, a) = (k*(sqrt(kappa^2 + k^2)*cosh(k*a) - k*sinh(k*a))) / (sqrt(kappa^2 + k^2)*(sqrt(kappa^2 + k^2)*cosh(k*a) + k*sinh(k*a)));
+f(k, a) = (k*(sqrt(kappa^2 + k^2)*cosh(k*a) - k*sinh(k*a))) / (sqrt(kappa^2 + k^2)*(sqrt(kappa^2 + k^2)*cosh(k*a) + k*sinh(k*a))); # [1/m2 / 1/m2] -> [-]?
 function W(q, ah)
-    factor = beta * (q*elc)^2 / (2epsilon_w * 4pi * epsilon_o)
-    W = quadgk(k -> f(k,ah), 0, 10.0e10)[1] * factor
+    """
+    Energy to bring ion out of Gibbs dividing surface.
+    """
+
+    factor = beta * (q*elc)^2 / (2epsilon_w * 4pi * epsilon_o) # Squared radius of sphere [m2]?
+    W = quadgk(k -> f(k,ah), 0, 10.0e10)[1] * factor # [m]?
 end;
 
 
 
 ### ---------- Ion specific functions ----------
 function U_alpha(t, ah, kappa, W)
-    if t < 1e10ah # while inside hydrated ion radius
-        U = 1000
-    else          # outside of radius
-        U = W*1e10ah/t * exp(-2kappa * (1e-10t - ah))
+    """ 
+    Gibbs adsorption energy of an α-ion. 
+    """
+
+    if t < 1e10ah # While inside hydrated ion radius
+        U = 1000 # Gibbs adsorption energy [J]
+    else          # Outside of radius
+        U = W*1e10ah/t * exp(-2kappa * (1e-10t - ah)) # Gibbs adsorption energy [J]
     end
 end;
-q_Na, r_Na = +1, 2.50e-10; # Levin (2009)
+q_Na, r_Na = +1, 2.50e-10; # Charge [-], Hydrated radius [m] from Levin (2009)
 W_Na   = W(q_Na, r_Na);
 U_Na(t) = U_alpha(t, r_Na, kappa, W_Na);
 Na   = (q_Na, U_Na);
@@ -64,7 +73,7 @@ SO4 = (q_SO4, U_SO4);
 
 ### ---------- Ions/salts input ----------
 ion_tot = (Na, Na, SO4, NH4, Cl); # The ions composing the salts
-n_salts = 2;                      # Number of salts
+n_salts = 2;                      # Number of salts [-]
 
 
 
