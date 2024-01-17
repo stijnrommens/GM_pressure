@@ -34,8 +34,8 @@ STconst = -1e-6*1e10*beta/Avog; # Surfce tension constant [mol/N.m] -> [M.m.Å/
 # ionC = 0.1; # Ionic concentration [M]
 # ionS = 0.1; # Ionic strength [M] CALCULATE FROM ionC FOR EACH SALT!
 n_salts = 2; # Number of salts [-]
-C = 0.01;
-print_flag = true
+C = 0.1;
+print_flag = false
 
 c_Na,   q_Na,   r_Na   = C*2, +1, 2.50e-10; # Ionic concentration [M], Charge [-], Hydrated radius [m] from Levin (2009)
 c_Cl,   q_Cl,   r_Cl   = 0, -1, 2.00e-10; # Levin (2010)
