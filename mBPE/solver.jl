@@ -2,25 +2,20 @@ using BoundaryValueDiffEq, OrdinaryDiffEq, Trapz
 
 
 ### ---------- Check input ----------
-if print_flag == true
-    print("Solver messages:")
-end
-
-function check_input(ion_tot, n_salts, print_flag)
+function check_input(ion_tot, n_salts)
     """Check if sum of charges = 0  and if number of salts is correct.
-
-    Args:
+        
+        Args:
         ion_tot (tuple):
-            1. q (float): Valency of the ion [-]
-            2. ah (float): Hydrated radius of the ion [m]
-            3. U(t) (function): Gibbs adsorption energy as function over distance [J/m]
+        1. q (float): Valency of the ion [-]
+        2. ah (float): Hydrated radius of the ion [m]
+        3. U(t) (function): Gibbs adsorption energy as function over distance [J/m]
         n_salts (integer): Number of salts present in the system [-]
         print_flag (boolean): Statement to (not) print the checks [-]
-
-    Returns:
+        
+        Returns:
         nothing
-    """
-    if print_flag == true
+        """
         charge_tot = 0
         for ion in ion_tot
             charge_tot += ion[1]*ion[2] # Sum of charges [-]
@@ -36,11 +31,15 @@ function check_input(ion_tot, n_salts, print_flag)
         else
             print("\n   ✔ Number of salts is correct.")
         end
-    end
-    nothing
-end;
-check_input(ion_tot, n_salts, print_flag);
-# @btime check_input(ion_tot, n_salts, print_flag)
+        nothing
+    end;
+
+
+if print_flag
+    print("Solver messages:")
+    check_input(ion_tot, n_salts);
+end
+    # @btime check_input(ion_tot, n_salts, print_flag)
 
 
 ### ---------- modified Poisson-Boltzmann equation ----------
@@ -83,6 +82,7 @@ function mPBE!(du, u, p, t)
     nothing
 end;
 
+
 function bc!(residual, u, p, t)
     """Initialize boundary conditions
 
@@ -114,15 +114,20 @@ function bc!(residual, u, p, t)
     residual[2] = u[1][1] -0.0 # Zero electrostatic potential in bulk liquid
     nothing
 end;
-tspan = (boundary, 0.01); # Distance [Å]
-u0  = [0.0, 0.0];
-mBPE_constants = (beta, elc, epsilon_o, epsilon_w, Avog);
-mPBE_param = (mBPE_constants, ion_tot, n_salts);
-bvp = BVProblem(mPBE!, bc!, u0, tspan, mPBE_param);
-# @btime BVProblem(mPBE!, bc!, u0, tspan, mPBE_param)
-sol = solve(bvp, Shooting(RadauIIA5(autodiff=false)), abstol=1e-12, reltol= 1e-6);
-# @btime solve(bvp, Shooting(RadauIIA5(autodiff=false)), abstol=1e-12, reltol= 1e-6)
 
+
+"""Solve modified Poisson-Boltzmann equation for the provided ion solution"""
+function solve_mPBE(ion_tot, n_salts)
+    tspan = (boundary, 0.01); # Distance [Å]
+    u0  = [0.0, 0.0];
+    mPBE_constants = (beta, elc, epsilon_o, epsilon_w, Avog);
+    mPBE_param = (mPBE_constants, ion_tot, n_salts);
+    bvp = BVProblem(mPBE!, bc!, u0, tspan, mPBE_param);
+    # @btime BVProblem(mPBE!, bc!, u0, tspan, mPBE_param)
+    sol = solve(bvp, Shooting(RadauIIA5(autodiff=false)), abstol=1e-12, reltol= 1e-6);
+    # @btime solve(bvp, Shooting(RadauIIA5(autodiff=false)), abstol=1e-12, reltol= 1e-6)
+    return sol
+end;
 
 
 ### ---------- Gibbs-Marangoni pressure ----------
@@ -190,8 +195,15 @@ function pGM!(time, potential, p, print_flag)
     end
     return (conc_matrix, gammacon, tension, pGM)
 end;
-time_range = range(0.01, boundary, 100001);
-pGM_constants = (STconst, Avog, ionS, beta, h, C);
-pGM_param = (pGM_constants, ion_tot, n_salts);
-sol2 = pGM!(time_range, sol, pGM_param, print_flag);
+
+function solve_pGM(ionS, ion_tot, n_salts)
+    time_range = range(0.01, boundary, 100001);
+    pGM_constants = (STconst, Avog, ionS, beta, h, C);
+    pGM_param = (pGM_constants, ion_tot, n_salts);
+    sol_PBE = solve_mPBE(ion_tot, n_salts)
+    sol_pGM = pGM!(time_range, sol_PBE, pGM_param, print_flag);
+    return sol_PBE, sol_pGM
 # @btime pGM!(time_range, sol, pGM_param, print_flag)
+end
+
+sol_PBE, sol_pGM = solve_pGM(ionS, ion_tot, n_salts)
