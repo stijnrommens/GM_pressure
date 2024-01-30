@@ -4,7 +4,7 @@ Numerical solver of the **modified Poisson-Boltzmann equation** from Duignan (20
 <img src="https://github.com/stijnrommens/GM_pressure/assets/113170925/cc816c5d-426a-4f06-9b4b-0b75e1747da0" width="400">
 
 The model needs the following input:
-- ionic strength;
+- ionic concentrations;
 - hydrated radius and charge of each ion;
 - adsorption energy function as a function of distance from the gas-liquid interface, for each ion.
 
