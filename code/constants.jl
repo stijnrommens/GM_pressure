@@ -1,0 +1,5 @@
+const kB = 1.3806503e-23         # Boltzmann constant [J/K]
+const elc = 1.6021765e-19        # Elementary charge  [C]
+const Avog = 6.0221415e23        # Avogadro constant  [1/mol]
+const epsilon_o = 8.85418782e-12 # Vacuum's permittivity [F/m]
+const epsilon_w = 78.3           # Water's permittivity [F/m]

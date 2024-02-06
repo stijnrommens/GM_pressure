@@ -72,11 +72,18 @@ function mPBE!(du, u, p, t)
             nothing
         """
     constants, ion_tot, n_salts = p
-    beta, elc, epsilon_o, epsilon_w, Avog = constants
+    beta, elc, epsilon_o, epsilon_w, Avog, kappa = constants
     Gads_epot = 0
+    # print(ion_tot)
     for ion in ion_tot
         rho_ion = ion[1] * Avog * 1000 # Ion density [particles/L] -> [particles/m3]
-        Gads_epot += rho_ion * ion[2] * exp(-(ion[3])(t) - ion[2] * u[1]) # Sum of exponentials [-]
+        if t < 1e10*ion[3]
+            U = 1000
+        else
+            U = ion[4]*1e10*ion[3]/t * exp(-2kappa * (1e-10t - ion[3]))
+        end
+        Gads_epot += rho_ion * ion[2] * exp(-U - ion[2] * u[1]) # Sum of exponentials [-]
+        # Gads_epot += rho_ion * ion[2] * exp(-(ion[3])(t) - ion[2] * u[1]) # Sum of exponentials [-]
     end
     du[1] = -u[2] # Second derivative [?]
     du[2] = 1e-20beta * elc^2 / (epsilon_o*epsilon_w) * Gads_epot #/ n_salts # First derivative [?] IS n_salts actually needed, or did Tim used it to use comparable numbers for mixtures?
@@ -116,11 +123,12 @@ function bc!(residual, u, p, t)
 end;
 tspan = (boundary, 0.01); # Distance [Å]
 u0  = [0.0, 0.0];
-mBPE_constants = (beta, elc, epsilon_o, epsilon_w, Avog);
+mBPE_constants = (beta, elc, epsilon_o, epsilon_w, Avog, kappa);
 mPBE_param = (mBPE_constants, ion_tot, n_salts);
 bvp = BVProblem(mPBE!, bc!, u0, tspan, mPBE_param);
 # @btime BVProblem(mPBE!, bc!, u0, tspan, mPBE_param)
-sol = solve(bvp, Shooting(RadauIIA5(autodiff=false)), abstol=1e-12, reltol= 1e-6);
+sol = solve(bvp, Shooting(RadauIIA5(autodiff=false)), abstol=1e-15, reltol= 1e-15);
+print(sol.retcode)
 # @btime solve(bvp, Shooting(RadauIIA5(autodiff=false)), abstol=1e-12, reltol= 1e-6)
 
 
@@ -193,5 +201,5 @@ end;
 time_range = range(0.01, boundary, 100001);
 pGM_constants = (STconst, Avog, ionS, beta, h, C);
 pGM_param = (pGM_constants, ion_tot, n_salts);
-sol2 = pGM!(time_range, sol, pGM_param, print_flag);
+# sol2 = pGM!(time_range, sol, pGM_param, print_flag);
 # @btime pGM!(time_range, sol, pGM_param, print_flag)

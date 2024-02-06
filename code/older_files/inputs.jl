@@ -1,7 +1,7 @@
 cd(@__DIR__)
 using Pkg
 Pkg.activate(".")
-using Printf, QuadGK, BenchmarkTools ,Plots
+using Printf, QuadGK#, BenchmarkTools ,Plots
 
 
 ### ---------- Constants & Input ----------
@@ -18,13 +18,20 @@ factor = 0.0;
 U0 = 0.0;
 ion_tot = ();
 
-C = 1.00142; # M
+C = 1; # M
 
-ion_list = [[C, +1, 2.50e-10],  # Na, Ionic concentration [M], Charge [-], Hydrated radius [m] from Levin (2009)
-            [C, -1, 2.00e-10],  # Cl, Levin (2010)
-            [C, +1, 2.50e-10],  # NH4, Kielland (1937)
-            [C, -2, 3.79e-10]]; # SO4, Levin (2010)
-
+# function conc(C::Float64=0.0)
+#     return C
+# end
+# print(C)
+# print("\n\n")
+ion_list = [[C, +1, 2.3e-10],  # Na, Ionic concentration [M], Charge [-], Hydrated radius [m] from Levin (2009)
+            [C, -1, 3.2e-10]];#,  # Cl, Levin (2010)
+            # [C, +1, 3.15e-10], # K
+            # [C, +1, 3.15e-10], # K
+            # [2C, +1, 2.50e-10],  # NH4, Kielland (1937)
+            # [C, +2, 3.63e-10], # Mg
+            # [C, -2, 3.79e-10]]; # SO4, Levin (2010)
 
 n_salts = length(ion_list)/2; # Number of salts [-]
 print_flag = true;
@@ -55,8 +62,7 @@ kappa = sqrt(2 * elc^2 * Avog * ionS*1000 * beta / (epsilon_w*epsilon_o)); # Inv
 boundary = 10e10/kappa;         # 10x Debye-Hückel lenght [Å]
 
 
-f(k, a) = (k*(sqrt(kappa^2 + k^2)*cosh(k*a) - k*sinh(k*a))) / (sqrt(kappa^2 + k^2)*(sqrt(kappa^2 + k^2)*cosh(k*a) + k*sinh(k*a))); # [1/m2 / 1/m2] -> [-]?
-function W(q, ah, beta, elc, epsilon_w, epsilon_o, factor)
+function W(q, ah, kappa, beta, elc, epsilon_w, epsilon_o, factor)
     """Calculate the energy to bring ion out of Gibbs dividing surface
 
     Args:
@@ -67,7 +73,9 @@ function W(q, ah, beta, elc, epsilon_w, epsilon_o, factor)
         W (float): Energy to bring ion out of Gibbs dividing surface [m?]
     """
     factor = beta * (q*elc)^2 / (2epsilon_w * 4pi * epsilon_o) # Squared radius of sphere [m2]?
-    W = quadgk(k -> f(k,ah), 0, 10.0e10)[1] * factor # [m]?
+    f(k) = (k*(sqrt(kappa^2 + k^2)*cosh(k*ah) - k*sinh(k*ah))) / (sqrt(kappa^2 + k^2)*(sqrt(kappa^2 + k^2)*cosh(k*ah) + k*sinh(k*ah))); # [1/m2 / 1/m2] -> [-]?
+
+    W = quadgk(k -> f(k), 0, 10.0e10)[1] * factor # [m]?
     return W
 end;
 
@@ -92,6 +100,14 @@ function U_alpha(t, ah, kappa, W, U)
     return U
 end;
 
+# W1 = W(+1, 2.3e-10, beta, elc, epsilon_w, epsilon_o, factor)
+# U1(z) = U_alpha(z, 2.3e-10, W1, kappa, U0)
+
+# W2 = W(-1, 3.2e-10, beta, elc, epsilon_w, epsilon_o, factor)
+# U2(z) = U_alpha(z, 3.2e-10, W2, kappa, U0)
+
+# ion_tot = ((0.1, +1, U1), (0.1, -1, U2))
+# println(ion_tot)
 
 function give_ions(ion_list, kappa, beta, elc, epsilon_w, epsilon_o, factor, U0, ion_tot)
     """Combine all information needed for solver.jl
@@ -110,14 +126,17 @@ function give_ions(ion_list, kappa, beta, elc, epsilon_w, epsilon_o, factor, U0,
             3. U(t) (function): Gibbs adsorption energy as function over distance [J/m]
     """
     for ion in ion_list
-        W_cal = W(ion[2], ion[3], beta, elc, epsilon_w, epsilon_o, factor)
-        U_func(t) = U_alpha(t, ion[3], kappa, W_cal, U0)
-        ion_tot = tuple(ion_tot..., (ion[1], ion[2], U_func))
+        W_cal = W(ion[2], ion[3], kappa, beta, elc, epsilon_w, epsilon_o, factor)
+        # print(W_cal)
+        # print("\n\n\n")
+        # U_func(t) = U_alpha(t, ion[3], kappa, W_cal, U0)
+        # ion_tot = tuple(ion_tot..., (ion[1], ion[2], U_func))
+        ion_tot = tuple(ion_tot..., (ion[1], ion[2], ion[3], W_cal))
     end
     return ion_tot
 end;
 ion_tot = give_ions(ion_list, kappa, beta, elc, epsilon_w, epsilon_o, factor, U0, ion_tot);
-
+# println(ion_tot)
 
 ### ---------- Calculate ----------
 include("solver.jl")
@@ -125,14 +144,17 @@ include("solver.jl")
 
 if print_flag == true
     print("\n\nResults:")
-    print("\n   • Surface excess × q × c   = ", round.(sol2[2]; digits=3), " = ", round.(sum(sol2[2]); digits=3), " Å")
-    @printf("\n   • Surface tension          = %.3e mN/m", sol2[3]*C)
-    @printf("\n   • Surface tension          = %.3e mN/m.M", sol2[3])
-    @printf("\n   • Electrostatic potential  = %.3e mV", 1000*last(sol.u)[1])
-    @printf("\n   • Gibbs-Marangoni pressure = %.3f Pa", sol2[4])
+    # print("\n   • Surface excess × q × c   = ", round.(sol2[2]; digits=3), " = ", round.(sum(sol2[2]); digits=3), " Å")
+    # @printf("\n   • Surface tension          = %.3e mN/m", sol2[3]*C)
+    # @printf("\n   • Surface tension          = %.3e mN/m.M", sol2[3])
+    @printf("\n   • Electrostatic potential  = %.10f mV", 1000*last(sol.u)[1])
+    @printf("\n   • Derivative  = %.10e ", last(sol.u)[2])
+    # @printf("\n   • Gibbs-Marangoni pressure = %.3f Pa", sol2[4])
     # @printf("\n \U1FAE7")
+    println(length(sol.u))
+    println(sol.retcode)
 end
-
+# println(sol)
 
 ### ---------- Plot ----------
 # plot(sol.t, reduce(hcat, sol.u)[1,:],
