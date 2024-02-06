@@ -178,3 +178,5 @@ cython_debug/
 # Libreoffice lock files
 .~lock*
 
+# Julia Manifest will change for every machine. No use tracking.
+Manifest.toml
