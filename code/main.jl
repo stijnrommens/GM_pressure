@@ -12,7 +12,6 @@ include("modules/pGMMod.jl")
 
 using .Check_Mod
 
-
 function main(list=false; 
     print_flag::Bool=true, T::Float64=297.15, h::Float64=10e-9, ionS::Float64=0.0, ion_tot::Tuple=(),
     elc::Float64=elc, Avog::Float64=Avog, epsilon_w::Float64=epsilon_w, epsilon_o::Float64=epsilon_o,
@@ -21,8 +20,8 @@ function main(list=false;
     if list == false
         list = [[0.1, +1, 2.3e-10], [0.1, -1, 3.2e-10]]
     end
-
     n = length(list)/2 # Number of salts [-]
+
     beta = 1 / (kB * T)            # Thermodynamic beta [1/J] = [s2/kg.m2] = [1/N.m]
     STconst = -1e-6*1e10*beta/Avog # Surfce tension constant [mol/N.m] -> [M.m.Å/mN]
 
@@ -65,9 +64,4 @@ function main(list=false;
         @printf("\n   • Electrostatic potential  = %.3f mV", 1000*last(bvp_sol.u)[1])
         @printf("\n   • Gibbs-Marangoni pressure = %.3f Pa", pGM_sol[4])
     end
-end
-
-
-function test()
-    main()
 end
