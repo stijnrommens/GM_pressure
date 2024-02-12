@@ -31,6 +31,9 @@ function main(list=false;
     ionS = 0.5*ionS # Ionic strength [M]
 
     kappa = sqrt(2 * elc^2 * Avog * ionS*1000 * beta / (epsilon_w*epsilon_o)) # Inverse Debye-Hückel lenght [1/m]
+    if kappa == 0.0
+        return [0, 0, 0, 0]
+    end
     boundary = 10e10/kappa         # 10x Debye-Hückel lenght [Å]
 
     for ion in list
