@@ -67,4 +67,6 @@ function main(list=false;
         @printf("\n   • Electrostatic potential  = %.3f mV", 1000*last(bvp_sol.u)[1])
         @printf("\n   • Gibbs-Marangoni pressure = %.3f Pa", pGM_sol[4])
     end
+
+    return pGM_sol
 end
