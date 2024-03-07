@@ -36,11 +36,24 @@ function pGM!(time, potential, p; pGM::Float64=0.0)
     conc_matrix = zeros(Float64, size(time)[1], length(ion_tot))
     for (index, t) in enumerate(time)
         for (index2, ion) in enumerate(ion_tot)
-            # U = U_alpha(t, ion[3], ion[4], kappa=kappa)
-            if t < 1e10*ion[3]
-                U = 1000
+            if ion[4] == "beta"
+                if t < 1e10*ion[3]
+                    U = ion[5]*1e10*ion[3]/t * exp(-2kappa * (1e-10t - ion[3])) - 2.1
+                else
+                    U = ion[5]*1e10*ion[3]/t * exp(-2kappa * (1e-10t - ion[3]))
+                end
+            elseif ion[4] == "proton"
+                if t < 1e10*ion[3]
+                    U = beta/(4pi*1e-10t) * (elc^2)/(4epsilon_o*epsilon_w) * exp(-2kappa*1e-10t) - 3.05
+                else
+                    U = beta/(4pi*1e-10t) * (elc^2)/(4epsilon_o*epsilon_w) * exp(-2kappa*1e-10t)
+                end
             else
-                U = ion[4]*1e10*ion[3]/t * exp(-2kappa * (1e-10t - ion[3]))
+                if t < 1e10*ion[3]
+                    U = 1000
+                else
+                    U = ion[5]*1e10*ion[3]/t * exp(-2kappa * (1e-10t - ion[3]))
+                end
             end
             conc_matrix[index, index2] = exp(-U - ion[2]*potential(t)[1]) - 1 # Fractionate ionic concentration profile [M/M] = [-], Eq.6
         end

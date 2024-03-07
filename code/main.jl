@@ -1,7 +1,7 @@
 cd(@__DIR__)
 using Pkg
 Pkg.activate(".")
-using BoundaryValueDiffEq, OrdinaryDiffEq, Printf, BenchmarkTools, PyCall
+using BoundaryValueDiffEq, OrdinaryDiffEq, Printf#, BenchmarkTools
 
 include("welcome.jl")
 include("constants.jl")
@@ -18,7 +18,7 @@ function main(list=false;
     abstol::Float64=1e-15, reltol::Float64=1e-15, fun=mPBE!, bc=bc!)
     
     if list == false
-        list = [[0.1, +1, 2.3e-10], [0.1, -1, 3.2e-10]]
+        list = [[0.1, +1, 2.5e-10], [0.1, -1, 2.0e-10]]
     end
     n = length(list)/2 # Number of salts [-]
 
@@ -35,19 +35,23 @@ function main(list=false;
 
     for ion in list
         Wcal = W(ion[2], ion[3]; kappa=kappa, beta=beta, elc=elc, epsilon_w=epsilon_w, epsilon_o=epsilon_o)
-        ion_tot = tuple(ion_tot..., (ion[1], ion[2], ion[3], Wcal))
+        if last(ion) isa String
+            ion_tot = tuple(ion_tot..., (ion[1], ion[2], ion[3], ion[4], Wcal))
+        else
+            ion_tot = tuple(ion_tot..., (ion[1], ion[2], ion[3], "alpha", Wcal))
+        end
     end
     
     # --- Electrostatic potential ---
     mPBE_constants = (beta, elc, epsilon_o, epsilon_w, Avog, kappa)
     mPBE_param     = (mPBE_constants, ion_tot, n)
-    tspan = (boundary, 0.01)
+    tspan = (boundary, 0.0)
     u0  = [0.0, 0.0]
     bvp_problem = BVProblem(fun, bc, u0, tspan, mPBE_param)
     bvp_sol     = solve(bvp_problem, Shooting(RadauIIA5(autodiff=false)), abstol=abstol, reltol=reltol)
 
     # --- Gibbs-Marangoni pressure ---
-    time_range = range(0.01, boundary, 100001)
+    time_range = range(0.0, boundary, 100001)
     pGM_constants = (STconst, Avog, ionS, beta, h, kappa)
     pGM_param = (pGM_constants, ion_tot, n)
     pGM_sol = pGM!(time_range, bvp_sol, pGM_param)
@@ -64,4 +68,6 @@ function main(list=false;
         @printf("\n   • Electrostatic potential  = %.3f mV", 1000*last(bvp_sol.u)[1])
         @printf("\n   • Gibbs-Marangoni pressure = %.3f Pa", pGM_sol[4])
     end
+
+    return pGM_sol[4]
 end
