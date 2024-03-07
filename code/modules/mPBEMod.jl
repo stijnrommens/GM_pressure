@@ -31,15 +31,27 @@ function mPBE!(du, u, p, t)
 
     for ion in ion_tot
         rho_ion = ion[1] * Avog * 1000 # Ion density [particles/L] -> [particles/m3]
-
-        if t < 1e10*ion[3]
-            U = 1000
+        if ion[4] == "beta"
+            if t < 1e10*ion[3]
+                U = ion[5]*1e10*ion[3]/t * exp(-2kappa * (1e-10t - ion[3])) - 2.1
+            else
+                U = ion[5]*1e10*ion[3]/t * exp(-2kappa * (1e-10t - ion[3]))
+            end
+        elseif ion[4] == "proton"
+            if t < 1e10*ion[3]
+                U = beta/(4pi*1e-10t) * (elc^2)/(4epsilon_o*epsilon_w) * exp(-2kappa*1e-10t) - 3.05
+            else
+                U = beta/(4pi*1e-10t) * (elc^2)/(4epsilon_o*epsilon_w) * exp(-2kappa*1e-10t)
+            end
         else
-            U = ion[4]*1e10*ion[3]/t * exp(-2kappa * (1e-10t - ion[3]))
+            if t < 1e10*ion[3]
+                U = 1000
+            else
+                U = ion[5]*1e10*ion[3]/t * exp(-2kappa * (1e-10t - ion[3]))
+            end
+            # Gads_epot += rho_ion * ion[2] * exp(-U - ion[2] * u[1])        
         end
-
-        Gads_epot += rho_ion * ion[2] * exp(-U - ion[2] * u[1]) # Sum of exponentials [-]
-        # Gads_epot += rho_ion * ion[2] * exp(-(ion[3])(t) - ion[2] * u[1])
+        Gads_epot += rho_ion * ion[2] * exp(-U - ion[2] * u[1])
     end
     du[1] = -u[2] # Second derivative [?]
     du[2] = 1e-20beta * elc^2 / (epsilon_o*epsilon_w) * Gads_epot #/ n # First derivative [?] IS n_salts actually needed, or did Tim used it to use comparable numbers for mixtures?
