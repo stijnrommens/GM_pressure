@@ -52,7 +52,7 @@ function main(list=false;
 
     # --- Gibbs-Marangoni pressure ---
     time_range = range(0.0, boundary, 100001)
-    pGM_constants = (STconst, Avog, ionS, beta, h, kappa)
+    pGM_constants = (beta, elc, epsilon_o, epsilon_w, Avog, kappa, STconst, ionS, h)
     pGM_param = (pGM_constants, ion_tot, n)
     pGM_sol = pGM!(time_range, bvp_sol, pGM_param)
 
@@ -69,5 +69,5 @@ function main(list=false;
         @printf("\n   • Gibbs-Marangoni pressure = %.3f Pa", pGM_sol[4])
     end
 
-    return pGM_sol[4]
+    return pGM_sol[4], pGM_sol[3]
 end
