@@ -32,7 +32,7 @@ function pGM!(time, potential, p; pGM::Float64=0.0)
         pGM (float): Total Gibbs-Marangoni pressure [Pa]
     """
     constants, ion_tot, n_salts = p
-    STconst, Avog, ionS, beta, h, kappa = constants
+    beta, elc, epsilon_o, epsilon_w, Avog, kappa, STconst, ionS, h = constants
     conc_matrix = zeros(Float64, size(time)[1], length(ion_tot))
     for (index, t) in enumerate(time)
         for (index2, ion) in enumerate(ion_tot)
