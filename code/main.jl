@@ -1,9 +1,9 @@
-cd(@__DIR__)
-using Pkg
-Pkg.activate(".")
+# cd(@__DIR__)
+# using Pkg
+# Pkg.activate(".")
 using BoundaryValueDiffEq, OrdinaryDiffEq, Printf#, BenchmarkTools
 using Parameters
-import BoundaryValueDiffEq: BVProblem
+# import BoundaryValueDiffEq: BVProblem
 
 include("welcome.jl")
 include("constants.jl")
@@ -102,7 +102,7 @@ function main(list=false;
     bvp_problem = BVProblem(paramized_fun, bc, u0, tspan)
     bvp_sol     = solve(
         bvp_problem,
-        MultipleShooting(;ode_alg = Rodas4P(autodiff = false), nshoots = 10),
+        MultipleShooting(;ode_alg = Rodas4P(autodiff = false), nshoots = 20),
         # Shooting(;ode_alg = AutoVern7(Rodas4(autodiff = false))),
         abstol = abstol,
         reltol = reltol)
