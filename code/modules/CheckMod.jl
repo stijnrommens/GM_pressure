@@ -1,7 +1,7 @@
 module Check_Mod
 using OrdinaryDiffEq
 
-function check_input(list; charge_tot::Float64=0.0)#, print_flag::Bool)
+function check_input(list; charge_tot::Float64=0.0, print_flag::Bool=false)
     """Check if sum of charges = 0 and number of salts is correct.
 
     Args:
@@ -21,25 +21,32 @@ function check_input(list; charge_tot::Float64=0.0)#, print_flag::Bool)
     if charge_tot != 0
         println("   ✖ WARNING: Sum of charges is NOT 0!")
     else
-        println("   ✔ Sum of charges is 0.")
+        if print_flag
+            println("   ✔ Sum of charges is 0.")
+        end
     end
     nothing
 end
 
-function check_mPBE(sol)
+function check_mPBE(sol; print_flag::Bool=false)
     if SciMLBase.successful_retcode(sol)
-        println("   ✔ BVP succesfully solved.")
+        if print_flag
+            println("   ✔ BVP succesfully solved.")
+        end
     else
-        println("   ✖ WARNING: BVP NOT succesfully solved!")
+        println("   ✖ WARNING:\tBVP NOT succesfully solved!")
+        println("           \t\tReturn code: $(sol.retcode)")
     end
     nothing
 end
 
-function check_pGM(sol)
+function check_pGM(sol; print_flag::Bool=false)
     if sum(sol) > 0.05
         println("   ✖ WARNING: Electroneutrality condition is NOT satisfied!")
     else
-        println("   ✔ Electroneutrality condition is satisfied.")
+        if print_flag
+            println("   ✔ Electroneutrality condition is satisfied.")
+        end
     end
     nothing
 end

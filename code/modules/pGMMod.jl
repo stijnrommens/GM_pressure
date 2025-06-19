@@ -1,4 +1,5 @@
 using Trapz
+using Parameters
 
 function pGM!(time, potential, p; pGM::Float64=0.0)
     """
@@ -31,43 +32,57 @@ function pGM!(time, potential, p; pGM::Float64=0.0)
         tension (float): Total surface tension [mN/m.M]
         pGM (float): Total Gibbs-Marangoni pressure [Pa]
     """
-    constants, ion_tot, n_salts = p
-    beta, elc, epsilon_o, epsilon_w, Avog, kappa, STconst, ionS, h = constants
-    conc_matrix = zeros(Float64, size(time)[1], length(ion_tot))
-    for (index, t) in enumerate(time)
-        for (index2, ion) in enumerate(ion_tot)
-            if ion[4] == "beta"
-                if t < 1e10*ion[3]
-                    U = ion[5]*1e10*ion[3]/t * exp(-2kappa * (1e-10t - ion[3])) - 2.1
+    @unpack beta, elc, epsilon_o, epsilon_w, Avog, kappa, n, STconst, ionS, h = p
+    @unpack ion_conc, ion_charges, ion_hyd_radii, ion_Wcal, ion_types = p
+    
+    conc_matrix = zeros(Float64, size(time)[1], length(ion_conc))
+    for (i, t) in enumerate(time)
+        for (j, (c_i, ch_i, hr_i, W_i, type_i)) in enumerate(zip(ion_conc, ion_charges, ion_hyd_radii, ion_Wcal, ion_types))
+
+            if type_i == "beta"
+                if t < 1e10*hr_i
+                    U = W_i*1e10*hr_i/t * exp(-2kappa * (1e-10t - hr_i)) - 2.1
                 else
-                    U = ion[5]*1e10*ion[3]/t * exp(-2kappa * (1e-10t - ion[3]))
+                    U = W_i*1e10*hr_i/t * exp(-2kappa * (1e-10t - hr_i))
                 end
-            elseif ion[4] == "proton"
-                if t < 1e10*ion[3]
+            elseif type_i == "proton"
+                if t < 1e10*hr_i
                     U = beta/(4pi*1e-10t) * (elc^2)/(4epsilon_o*epsilon_w) * exp(-2kappa*1e-10t) - 3.05
                 else
                     U = beta/(4pi*1e-10t) * (elc^2)/(4epsilon_o*epsilon_w) * exp(-2kappa*1e-10t)
                 end
             else
-                if t < 1e10*ion[3]
+                if t < 1e10*hr_i
                     U = 1000
                 else
-                    U = ion[5]*1e10*ion[3]/t * exp(-2kappa * (1e-10t - ion[3]))
+                    U = W_i*1e10*hr_i/t * exp(-2kappa * (1e-10t - hr_i))
                 end
             end
-            conc_matrix[index, index2] = exp(-U - ion[2]*potential(t)[1]) - 1 # Fractionate ionic concentration profile [M/M] = [-], Eq.6
+            conc_matrix[i, j] = exp(-U - ch_i*potential(t)[1]) - 1 # Fractionate ionic concentration profile [M/M] = [-], Eq.6
         end
     end
-    gammacon = zeros(1, length(ion_tot))
-    gammacon_qc = zeros(1, length(ion_tot))
-    for (index, ion) in enumerate(ion_tot)
-        gammacon[index] = trapz(time, conc_matrix[:, index]) # Surface excess over cocentration [M.Å/M] = [Å], Eq.6
-        gammacon_qc[index] = gammacon[index]*ion[1]*ion[2] # Surface excess × charge × concentration [Å.M]
+
+    gammacon = zeros(1, length(ion_conc))
+    gammacon_qc = zeros(1, length(ion_conc))
+    
+    for (i, (c_i, ch_i)) in enumerate(zip(ion_conc, ion_charges))
+        # Surface excess over cocentration [M.Å/M] = [Å], Eq.6
+        gammacon[i] = trapz(time, conc_matrix[:, i]) 
+        
+        # Surface excess × charge × concentration [Å.M]
+        gammacon_qc[i] = gammacon[i] * c_i * ch_i
     end
-    tension = sum(gammacon)/STconst # Surface tension [Å] / [M.m.Å/mN] -> [mN/m.M]
-    for (index, ion) in enumerate(ion_tot)
-        gammacon_squared = gammacon[index]^2 # Surface excess squared [Å^2]
-        pGM += 4Avog * ion[1]*1000 * gammacon_squared*1e-20 / (beta*h^2) # Gibbs-Marangoni pressure [m4.mol.kg/m5.mol.s2] -> [Pa], Eq.5
+    
+    # Surface tension [Å] / [M.m.Å/mN] -> [mN/m.M]
+    tension = sum(gammacon) / STconst
+    
+    for (index, c_i) in enumerate(ion_conc)
+        # Surface excess squared [Å^2]
+        gammacon_squared = gammacon[index]^2
+        
+        # Gibbs-Marangoni pressure [m4.mol.kg/m5.mol.s2] -> [Pa], Eq.5
+        pGM += 4Avog * c_i * 1000 * gammacon_squared * 1e-20 / (beta * h^2)
     end
+
     return (conc_matrix, gammacon_qc, tension, pGM)
 end
