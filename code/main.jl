@@ -55,6 +55,8 @@ function main(list=false;
     end
     # n = length(list)/2 # Number of salts [-]
 
+    # TODO Consider just using kB and T separately. Makes equations easier to
+    # compare with paper
     beta::Float64 = 1 / (kB * T)            # Thermodynamic beta [1/J] = [s2/kg.m2] = [1/N.m]
     STconst = -1e-6 * 1e10 * beta / Avog    # Surface tension constant [mol/N.m] -> [M.m.Å/mN]
 

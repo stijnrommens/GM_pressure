@@ -39,6 +39,7 @@ function pGM!(time, potential, p; pGM::Float64=0.0)
     for (i, t) in enumerate(time)
         for (j, (c_i, ch_i, hr_i, W_i, type_i)) in enumerate(zip(ion_conc, ion_charges, ion_hyd_radii, ion_Wcal, ion_types))
 
+            # TODO include beta in these equations (as defined in paper / thesis)
             if type_i == "beta"
                 if t < 1e10*hr_i
                     U = W_i*1e10*hr_i/t * exp(-2kappa * (1e-10t - hr_i)) - 2.1
@@ -58,6 +59,7 @@ function pGM!(time, potential, p; pGM::Float64=0.0)
                     U = W_i*1e10*hr_i/t * exp(-2kappa * (1e-10t - hr_i))
                 end
             end
+            # TODO include beta here (as defined in paper / thesis)
             conc_matrix[i, j] = exp(-U - ch_i*potential(t)[1]) - 1 # Fractionate ionic concentration profile [M/M] = [-], Eq.6
         end
     end

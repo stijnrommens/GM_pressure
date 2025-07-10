@@ -35,7 +35,7 @@ function mPBE!(du, u, p, t)
 
     for (c_i, ch_i, hr_i, W_i, typ_i) in zip(ion_conc, ion_charges, ion_hyd_radii, ion_Wcal, ion_types)
 
-        rho_ion = c_i * Avog * 1000 # Ion density [particles/L] -> [particles/m3]
+        # TODO include beta in these equation (as defined in paper / thesis)
         if typ_i == "beta"
             if t < 1e10*hr_i
                 U = W_i*1e10*hr_i/t * exp(-2kappa * (1e-10t - hr_i)) - 2.1
@@ -56,6 +56,8 @@ function mPBE!(du, u, p, t)
             end
             # Gads_epot += rho_ion * ch_i * exp(-U - ch_i * u[1])        
         end
+        # TODO include beta here (as paper / thesis)
+        rho_ion = c_i * Avog * 1000 # Ion density [particles/L] -> [particles/m3]
         Gads_epot += rho_ion * ch_i * exp(-U - ch_i * u[1])
     end
     
