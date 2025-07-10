@@ -27,7 +27,7 @@ function mPBE!(du, u, p, t)
         Returns:
             nothing
         """
-    @unpack beta, elc, epsilon_o, epsilon_w, Avog, kappa, n = p
+    @unpack beta, elc, epsilon_o, epsilon_w, Avog, kappa = p
     @unpack ion_conc, ion_charges, ion_hyd_radii, ion_Wcal, ion_types = p
     # constants, ion_tot, n = p
     # beta, elc, epsilon_o, epsilon_w, Avog, kappa = constants
@@ -58,6 +58,7 @@ function mPBE!(du, u, p, t)
         end
         Gads_epot += rho_ion * ch_i * exp(-U - ch_i * u[1])
     end
+    
     du[1] = -u[2] # Second derivative [?]
     du[2] = 1e-20beta * elc^2 / (epsilon_o*epsilon_w) * Gads_epot #/ n # First derivative [?] IS n_salts actually needed, or did Tim used it to use comparable numbers for mixtures?
     nothing

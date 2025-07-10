@@ -32,7 +32,7 @@ function pGM!(time, potential, p; pGM::Float64=0.0)
         tension (float): Total surface tension [mN/m.M]
         pGM (float): Total Gibbs-Marangoni pressure [Pa]
     """
-    @unpack beta, elc, epsilon_o, epsilon_w, Avog, kappa, n, STconst, ionS, h = p
+    @unpack beta, elc, epsilon_o, epsilon_w, Avog, kappa, STconst, ionS, h = p
     @unpack ion_conc, ion_charges, ion_hyd_radii, ion_Wcal, ion_types = p
     
     conc_matrix = zeros(Float64, size(time)[1], length(ion_conc))

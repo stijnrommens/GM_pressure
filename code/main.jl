@@ -14,7 +14,7 @@ include("modules/pGMMod.jl")
 
 using .Check_Mod
 
-@with_kw struct mPBE_Para
+@with_kw struct Para
     beta::Float64
     elc::Float64 = 1.6021765e-19    # Elementary charge [C]
     epsilon_o::Float64 = 8.85418782e-12 # Vacuum's permitivity [F/m]
@@ -22,27 +22,38 @@ using .Check_Mod
     Avog::Float64 = 6.0221415e23    # Avogadro's number [mol-1]
     h::Float64 = 10e-9  
     kappa::Float64
-    n::Int64
+    # n::Int64
     STconst::Float64
     ionS::Float64
-    ion_conc::Vector{Float64}
-    ion_charges::Vector{Int64}
-    ion_hyd_radii::Vector{Float64}
-    ion_Wcal::Vector{Float64}
-    ion_types::Array{String}
+    ion_conc::Vector{Float64} = Vector{Float64}[]
+    ion_charges::Vector{Int64}  = Vector{Float64}[]
+    ion_hyd_radii::Vector{Float64}  = Vector{Float64}[]
+    ion_Wcal::Vector{Float64}  = Vector{Float64}[]
+    ion_types::Array{String}  = Vector{String}[]
 end
 
+const kB = 1.3806503e-23         # Boltzmann constant [J/K]
+const elc = 1.6021765e-19        # Elementary charge  [C]
+const Avog = 6.0221415e23        # Avogadro constant  [1/mol]
+const epsilon_o = 8.85418782e-12 # Vacuum's permittivity [F/m]
+const epsilon_w = 78.3           # Water's permittivity [F/m]
 
 function main(list=false; 
     print_flag::Bool=true, T::Float64=297.15, h::Float64=10e-9, ionS::Float64=0.0, ion_tot::Tuple=(),
-    elc::Float64=elc, Avog::Float64=Avog, epsilon_w::Float64=epsilon_w, epsilon_o::Float64=epsilon_o,
-    abstol::Float64=1e-12, reltol::Float64=1e-12, fun=mPBE!, bc=bc!)
+    abstol::Float64=1e-9, reltol::Float64=1e-9, fun=mPBE!, bc=bc!)
     
+
     if list == false
         # contains molar concentration, charge, hydrated radius, type {'alpha', 'beta', 'proton'}
-        list = [[0.1, +1, 2.5e-10], [0.1, -1, 2.0e-10]]
+        # list = [[0.1, +1, 2.5e-10], [0.1, -1, 2.0e-10]]
+        
+        # Extra tough concentration of NH4Cl from other work
+        # list = [[0.0053, +1, 2.5e-10], [0.0053, -1, 2.0e-10]]
+        
+        # Extra tough concentration of NaAc from other work
+        list = [[0.95, +1, 2.5e-10, "alpha"], [0.95, -1, 3.22e-10, "beta"]]
     end
-    n = length(list)/2 # Number of salts [-]
+    # n = length(list)/2 # Number of salts [-]
 
     beta::Float64 = 1 / (kB * T)            # Thermodynamic beta [1/J] = [s2/kg.m2] = [1/N.m]
     STconst = -1e-6 * 1e10 * beta / Avog    # Surface tension constant [mol/N.m] -> [M.m.Å/mN]
@@ -58,14 +69,31 @@ function main(list=false;
     end
     boundary = 10e10/kappa         # 10x Debye-Hückel lenght [Å]
 
-    ion_conc = zeros(Float64, size(list, 1))
-    ion_charges = zeros(Int64, size(list, 1))
-    ion_hyd_radii = zeros(Float64, size(list, 1))
-    ion_Wcal = zeros(Float64, size(list, 1))
-    ion_types = Array{String}(undef, size(list, 1))
+    params = Para(
+        beta = beta,
+        kappa = kappa,
+        STconst = STconst,
+        ionS = ionS
+    )
 
+    n_present = 0
     for (i, ion) in enumerate(list)
-        Wcal = W(ion[2], ion[3]; kappa=kappa, beta=beta, elc=elc, epsilon_w=epsilon_w, epsilon_o=epsilon_o)
+        if ion[1] > 0.0
+            n_present += 1
+        end
+    end
+    ion_conc = zeros(Float64, n_present)
+    ion_charges = zeros(Int64, n_present)
+    ion_hyd_radii = zeros(Float64, n_present)
+    ion_Wcal = zeros(Float64, n_present)
+    ion_types = Array{String}(undef, n_present)
+
+    i = 1
+    for (_, ion) in enumerate(list)
+        if ion[1] == 0.0
+            continue
+        end
+        Wcal = W(ion[2], ion[3], params)
         ion_conc[i] = ion[1]
         ion_charges[i] = ion[2]
         ion_hyd_radii[i] = ion[3]
@@ -75,17 +103,14 @@ function main(list=false;
         else
             ion_types[i] = "alpha"
         end
+        i += 1
     end
+    # println(ion_types)
     
     # --- Electrostatic potential ---
     # mPBE_constants = (beta, elc, epsilon_o, epsilon_w, Avog, kappa)
     # mPBE_param = (mPBE_constants, ion_tot, n)
-    mPBE_param = mPBE_Para(
-        beta = beta,
-        kappa = kappa,
-        n = n,
-        STconst = STconst,
-        ionS = ionS,
+    mPBE_param = Para(params,
         ion_conc = ion_conc,
         ion_charges = ion_charges,
         ion_hyd_radii = ion_hyd_radii,
@@ -102,7 +127,14 @@ function main(list=false;
     bvp_problem = BVProblem(paramized_fun, bc, u0, tspan)
     bvp_sol     = solve(
         bvp_problem,
-        MultipleShooting(;ode_alg = Rodas4P(autodiff = false), nshoots = 20),
+        # Rodas4P worked for the 'tough' NH4Cl concentration at tolerances of 1e-9
+        MultipleShooting(;ode_alg = Rodas4P(autodiff = false), nshoots = 20),   
+        # MultipleShooting(;ode_alg = TRBDF2(autodiff = false), nshoots = 20),
+        # MultipleShooting(;ode_alg = Rodas5P(autodiff = false), nshoots = 20),
+        # MultipleShooting(;ode_alg = ROS3(autodiff = false), nshoots = 20),
+        # MultipleShooting(;ode_alg = DFBDF(autodiff = false), nshoots = 20),
+        # MultipleShooting(;ode_alg = FBDF(autodiff = false), nshoots = 20),
+        # MultipleShooting(;ode_alg = QNDF(autodiff = false), nshoots = 20),
         # Shooting(;ode_alg = AutoVern7(Rodas4(autodiff = false))),
         abstol = abstol,
         reltol = reltol)
@@ -110,8 +142,8 @@ function main(list=false;
     # println(bvp_sol[1], bvp_sol[-1])
     # --- Gibbs-Marangoni pressure ---
     time_range = range(0.0, boundary, 100001)
-    pGM_constants = (beta, elc, epsilon_o, epsilon_w, Avog, kappa, STconst, ionS, h)
-    pGM_param = (pGM_constants, ion_tot, n)
+    # pGM_constants = (beta, elc, epsilon_o, epsilon_w, Avog, kappa, STconst, ionS, h)
+    # pGM_param = (pGM_constants, ion_tot, n)
     pGM_sol = pGM!(time_range, bvp_sol, mPBE_param)
 
     # println("\nChecks:")
