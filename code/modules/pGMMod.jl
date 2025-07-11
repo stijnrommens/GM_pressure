@@ -32,35 +32,34 @@ function pGM!(time, potential, p; pGM::Float64=0.0)
         tension (float): Total surface tension [mN/m.M]
         pGM (float): Total Gibbs-Marangoni pressure [Pa]
     """
-    @unpack beta, elc, epsilon_o, epsilon_w, Avog, kappa, STconst, ionS, h = p
+    @unpack kB, T, elc, epsilon_o, epsilon_w, Avog, kappa, STconst, ionS, h = p
     @unpack ion_conc, ion_charges, ion_hyd_radii, ion_Wcal, ion_types = p
     
     conc_matrix = zeros(Float64, size(time)[1], length(ion_conc))
     for (i, t) in enumerate(time)
+        z = 1e-10t      # [Å]
         for (j, (c_i, ch_i, hr_i, W_i, type_i)) in enumerate(zip(ion_conc, ion_charges, ion_hyd_radii, ion_Wcal, ion_types))
 
-            # TODO include beta in these equations (as defined in paper / thesis)
             if type_i == "beta"
-                if t < 1e10*hr_i
-                    U = W_i*1e10*hr_i/t * exp(-2kappa * (1e-10t - hr_i)) - 2.1
+                if z < hr_i
+                    U = W_i * hr_i / z * exp(-2kappa * (z - hr_i)) - 2.1 * kB * T
                 else
-                    U = W_i*1e10*hr_i/t * exp(-2kappa * (1e-10t - hr_i))
+                    U = W_i * hr_i / z * exp(-2kappa * (z - hr_i))
                 end
             elseif type_i == "proton"
-                if t < 1e10*hr_i
-                    U = beta/(4pi*1e-10t) * (elc^2)/(4epsilon_o*epsilon_w) * exp(-2kappa*1e-10t) - 3.05
+                if z < hr_i
+                    U = 1 / (4pi * z) * (elc^2) / (4epsilon_o * epsilon_w) * exp(-2kappa * z) - 3.05 * kB * T
                 else
-                    U = beta/(4pi*1e-10t) * (elc^2)/(4epsilon_o*epsilon_w) * exp(-2kappa*1e-10t)
+                    U = 1 / (4pi * z) * (elc^2) / (4epsilon_o * epsilon_w) * exp(-2kappa * z)
                 end
             else
-                if t < 1e10*hr_i
-                    U = 1000
+                if z < hr_i
+                    U = 1000 * kB * T
                 else
-                    U = W_i*1e10*hr_i/t * exp(-2kappa * (1e-10t - hr_i))
+                    U = W_i * hr_i / z * exp(-2kappa * (z - hr_i))
                 end
             end
-            # TODO include beta here (as defined in paper / thesis)
-            conc_matrix[i, j] = exp(-U - ch_i*potential(t)[1]) - 1 # Fractionate ionic concentration profile [M/M] = [-], Eq.6
+            conc_matrix[i, j] = exp(-1 / (kB * T) * (U + ch_i*potential(t)[1])) - 1 # Fractionate ionic concentration profile [M/M] = [-], Eq.6
         end
     end
 
@@ -83,7 +82,7 @@ function pGM!(time, potential, p; pGM::Float64=0.0)
         gammacon_squared = gammacon[index]^2
         
         # Gibbs-Marangoni pressure [m4.mol.kg/m5.mol.s2] -> [Pa], Eq.5
-        pGM += 4Avog * c_i * 1000 * gammacon_squared * 1e-20 / (beta * h^2)
+        pGM += 4Avog * 1e-20kB * T * c_i * 1000 * gammacon_squared / (h^2)
     end
 
     return (conc_matrix, gammacon_qc, tension, pGM)

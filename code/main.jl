@@ -5,6 +5,12 @@ using BoundaryValueDiffEq, OrdinaryDiffEq, Printf#, BenchmarkTools
 using Parameters
 # import BoundaryValueDiffEq: BVProblem
 
+# TODO Rewrite to use angstrom length scale in all parameters.
+# Currently, the system is defined in meter scale, but solved in angstrom scale.
+# This means we're always operating close to the floating point limit, resulting
+# in unreliable outcomes. Operating directly with angstrom scale units should
+# make this easier
+
 include("welcome.jl")
 include("constants.jl")
 include("modules/CheckMod.jl")
@@ -15,7 +21,9 @@ include("modules/pGMMod.jl")
 using .Check_Mod
 
 @with_kw struct Para
-    beta::Float64
+    # beta::Float64
+    kB::Float64 = 1.3806503e-23     # Boltzmann constant [J/K]
+    T::Float64
     elc::Float64 = 1.6021765e-19    # Elementary charge [C]
     epsilon_o::Float64 = 8.85418782e-12 # Vacuum's permitivity [F/m]
     epsilon_w::Float64 = 78.3       # Water's permitivity [F/m]
@@ -55,24 +63,28 @@ function main(list=false;
     end
     # n = length(list)/2 # Number of salts [-]
 
-    # TODO Consider just using kB and T separately. Makes equations easier to
-    # compare with paper
-    beta::Float64 = 1 / (kB * T)            # Thermodynamic beta [1/J] = [s2/kg.m2] = [1/N.m]
-    STconst = -1e-6 * 1e10 * beta / Avog    # Surface tension constant [mol/N.m] -> [M.m.Å/mN]
+    STconst = -1e-6 * 1e10 / (Avog * kB * T)    # Surface tension constant [mol/N.m] -> [M.m.Å/mN]
 
     for ion in list
         ionS += ion[1] * ion[2]^2
     end
     ionS = 0.5*ionS # Ionic strength [M]
-
-    kappa::Float64 = sqrt(2 * elc^2 * Avog * ionS*1000 * beta / (epsilon_w*epsilon_o)) # Inverse Debye-Hückel lenght [1/m]
+    
+    # Inverse Debye-Hückel lenght [1/m]
+    kappa::Float64 = sqrt(
+        2 * elc^2 * Avog * ionS * 1000
+        / (kB * T * epsilon_w * epsilon_o)
+    )
+    
     if kappa == 0.0
         return [0, 0, 0, 0]
     end
-    boundary = 10e10/kappa         # 10x Debye-Hückel lenght [Å]
+
+    # Boundary defined as 10x Debye-Hückel length [Å]
+    boundary = 10e10 / kappa
 
     params = Para(
-        beta = beta,
+        T = T,
         kappa = kappa,
         STconst = STconst,
         ionS = ionS
@@ -123,9 +135,7 @@ function main(list=false;
     paramized_fun(du, u, p, t) = fun(du, u, mPBE_param, t)
     tspan = (boundary, 0.0)
     u0  = [0.0, 0.0]
-    # TODO rewrite for use of MultipleShooting - Need mPBE_param to have concrete 
-    # type in eltype(). That means rewriting mPBE and maybe bc to have a less
-    # convoluted input in parameters
+    
     bvp_problem = BVProblem(paramized_fun, bc, u0, tspan)
     bvp_sol     = solve(
         bvp_problem,
