@@ -54,7 +54,7 @@ function mPBE!(du, u, p, t)
             end
             # Gads_epot += rho_ion * ch_i * exp(-U - ch_i * u[1])        
         end
-        c_i_m = c_i * Avog * 1000 # Ion density [mol/L] -> [m-3]
+        c_i_m = c_i * Avog # Ion density [mol/m3] -> [m-3]
         Gads_epot += ch_i * c_i_m * exp(-1 / (kB * T) * (U + ch_i * elc * u[1]))
     end
     

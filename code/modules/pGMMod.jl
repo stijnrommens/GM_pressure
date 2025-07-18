@@ -70,7 +70,7 @@ function pGM!(time, potential, p; pGM::Float64=0.0)
         # Surface excess over concentration [M.Å/M] = [Å], Eq.6
         gammacon[i] = trapz(time, conc_matrix[:, i]) 
         
-        # Surface excess × charge × concentration [Å.M]
+        # Surface excess × charge × concentration [Å.mol/m3]
         gammacon_qc[i] = gammacon[i] * c_i * ch_i
     end
     
@@ -83,7 +83,7 @@ function pGM!(time, potential, p; pGM::Float64=0.0)
         gammacon_squared = gammacon[index]^2
         
         # Gibbs-Marangoni pressure [m4.mol.kg/m5.mol.s2] -> [Pa], Eq.5
-        pGM += 4Avog * 1e-20kB * T * c_i * 1000 * gammacon_squared / (h^2)
+        pGM += 4Avog * 1e-20kB * T * c_i * gammacon_squared / (h^2)
     end
 
     return (conc_matrix, gammacon_qc, tension, pGM)

@@ -22,23 +22,27 @@ using .Check_Mod
 
 @with_kw struct Para
     # beta::Float64
-    kB::Float64 = 1.3806503e-23     # Boltzmann constant [J/K]
+    kB::Float64 = 1.3806503e-23     # Boltzmann constant [kg.m2/s2.K]
     T::Float64
-    elc::Float64 = 1.6021765e-19    # Elementary charge [C]
-    epsilon_o::Float64 = 8.85418782e-12 # Vacuum's permitivity [F/m]
-    epsilon_w::Float64 = 78.3       # Water's permitivity [F/m]
+    elc::Float64 = 1.6021765e-19    # Elementary charge [s.A]
+    epsilon_o::Float64 = 8.85418782e-12 # Vacuum's permitivity [s4.A2/kg.m3]
+    epsilon_w::Float64 = 78.3       # Water's permitivity [-]
     Avog::Float64 = 6.0221415e23    # Avogadro's number [mol-1]
-    h::Float64 = 10e-9  
-    kappa::Float64
+    h::Float64 = 10e-9              # Film thickness between two bubbles [m]
+    kappa::Float64                  # Inverse Debye-Hueckel length [1/m]
     # n::Int64
-    STconst::Float64
-    ionS::Float64
-    ion_conc::Vector{Float64} = Vector{Float64}[]
+    STconst::Float64                # Constant for surface tension calculations [mol.m.Å/mN.dm3]
+    ionS::Float64                   # Ionic strength [mol/m3]
+    ion_conc::Vector{Float64} = Vector{Float64}[]   # Ion concentration [mol/m3]
     ion_charges::Vector{Int64}  = Vector{Float64}[]
     ion_hyd_radii::Vector{Float64}  = Vector{Float64}[]
     ion_Wcal::Vector{Float64}  = Vector{Float64}[]
     ion_types::Array{String}  = Vector{String}[]
     boundary::Float64
+end
+
+function Para_to_angstrom(params)
+    @unpack kB, epsilon_o, h, kappa, STconst, 
 end
 
 const kB = 1.3806503e-23         # Boltzmann constant [J/K]
@@ -60,7 +64,7 @@ function main(list=false;
         # list = [[0.0053, +1, 2.5e-10], [0.0053, -1, 2.0e-10]]
         
         # Extra tough concentration of NaAc from other work
-        list = [[0.95, +1, 2.5e-10, "alpha"], [0.95, -1, 3.22e-10, "beta"]]
+        list = [[0.95e3, +1, 2.5e-10, "alpha"], [0.95e3, -1, 3.22e-10, "beta"]]
     end
     # n = length(list)/2 # Number of salts [-]
 
@@ -72,13 +76,13 @@ function main(list=false;
     for ion in list
         ionS += ion[1] * ion[2]^2
     end
-    ionS = 0.5 * ionS   # Ionic strength [M]
+    ionS = 0.5 * ionS   # Ionic strength [mol/m3]
     
     # Inverse Debye-Hückel lenght [1/m]
     # FIXME kappa as a constant is not sensible when looking at ions with
     # different charges. Should be recalculated for each ion.
     kappa::Float64 = sqrt(
-        elc^2 * Avog * 2 * ionS * 1000
+        elc^2 * Avog * 2 * ionS
         / (kB * T * epsilon_w * epsilon_o)
     )
     
@@ -175,7 +179,7 @@ function main(list=false;
     
     if print_flag == true
         println("\nResults:")
-        println("   • Surface excess × q × c   = ", round.(pGM_sol[2]; digits=3), " = ", round.(sum(pGM_sol[2]); digits=3), " Å")
+        println("   • Surface excess × q × c   = ", round.(pGM_sol[2]; digits=3), " = ", round.(sum(pGM_sol[2]); digits=3), " Å.mol/m3")
         @printf("   • Surface tension          = %.3e mN/m.M", pGM_sol[3])
         @printf("\n   • Electrostatic potential  = %.3f mV", 1000*last(bvp_sol.u)[1])
         @printf("\n   • Gibbs-Marangoni pressure = %.3f Pa\n", pGM_sol[4])
