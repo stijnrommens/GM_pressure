@@ -5,8 +5,8 @@ function mPBE!(du, u, p, t)
 
         Args:
             du (array):
-                1. Second derivative [?]
-                2. First derivative [?]
+                1. First derivative [?]
+                2. Second derivative [?]
             u (array):
                 1. Electrostatic potential [V]
                 2. Derivative of electrostatic potential [V/m]
@@ -27,7 +27,7 @@ function mPBE!(du, u, p, t)
         Returns:
             nothing
         """
-    @unpack kB, T, elc, epsilon_o, epsilon_w, Avog, kappa = p
+    @unpack kB, T, elc, epsilon_o, epsilon_w, Avog, kappa, boundary = p
     @unpack ion_conc, ion_charges, ion_hyd_radii, ion_Wcal, ion_types = p
     # constants, ion_tot, n = p
     # beta, elc, epsilon_o, epsilon_w, Avog, kappa = constants
@@ -54,16 +54,16 @@ function mPBE!(du, u, p, t)
             end
             # Gads_epot += rho_ion * ch_i * exp(-U - ch_i * u[1])        
         end
-        c_i_m = c_i * 1000 # Ion density [mol/L] -> [mol/m3]
-        Gads_epot += ch_i * c_i_m * exp(-1 / (kB * T) * (U + ch_i * u[1]))
+        c_i_m = c_i * Avog * 1000 # Ion density [mol/L] -> [m-3]
+        Gads_epot += ch_i * c_i_m * exp(-1 / (kB * T) * (U + ch_i * elc * u[1]))
     end
     
-    du[1] = -u[2] # Second derivative [?]
-    du[2] = elc^2 / (epsilon_o * epsilon_w) * Avog / (1e20kB * T) * Gads_epot #/ n # First derivative [?] IS n_salts actually needed, or did Tim used it to use comparable numbers for mixtures?
+    du[1] = -u[2] # First derivative [V/m]
+    du[2] = elc / (epsilon_o * epsilon_w) * Gads_epot # Second derivative [V/m2]
     nothing
 end
 
-function bc!(residual, u, p, t)
+function bc!(residual, sol, p, t)
     """Initialize boundary conditions
 
         Args:
@@ -90,7 +90,8 @@ function bc!(residual, u, p, t)
         Returns:
             nothing
         """
-    residual[1] = u[end][2] - 0.0 # Zero electrostatic field in vacuum
-    residual[2] = u[1][1] - 0.0 # Zero electrostatic potential in bulk liquid
+    # @unpack boundary = p
+    residual[1] = sol[end][2] - 0.0 # Zero electrostatic field in vacuum
+    residual[2] = sol[1][1] - 0.0 # Zero electrostatic potential in bulk liquid
     nothing
 end

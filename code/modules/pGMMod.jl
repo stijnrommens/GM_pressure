@@ -37,7 +37,7 @@ function pGM!(time, potential, p; pGM::Float64=0.0)
     
     conc_matrix = zeros(Float64, size(time)[1], length(ion_conc))
     for (i, t) in enumerate(time)
-        z = 1e-10t      # [Å]
+        z = 1e-10t      # [m]
         for (j, (c_i, ch_i, hr_i, W_i, type_i)) in enumerate(zip(ion_conc, ion_charges, ion_hyd_radii, ion_Wcal, ion_types))
 
             if type_i == "beta"
@@ -59,7 +59,7 @@ function pGM!(time, potential, p; pGM::Float64=0.0)
                     U = W_i * hr_i / z * exp(-2kappa * (z - hr_i))
                 end
             end
-            conc_matrix[i, j] = exp(-1 / (kB * T) * (U + ch_i*potential(t)[1])) - 1 # Fractionate ionic concentration profile [M/M] = [-], Eq.6
+            conc_matrix[i, j] = exp(-1 / (kB * T) * (U + ch_i * elc * potential(t)[1])) - 1 # Fractionate ionic concentration profile [M/M] = [-], Eq.6
         end
     end
 
@@ -67,7 +67,7 @@ function pGM!(time, potential, p; pGM::Float64=0.0)
     gammacon_qc = zeros(1, length(ion_conc))
     
     for (i, (c_i, ch_i)) in enumerate(zip(ion_conc, ion_charges))
-        # Surface excess over cocentration [M.Å/M] = [Å], Eq.6
+        # Surface excess over concentration [M.Å/M] = [Å], Eq.6
         gammacon[i] = trapz(time, conc_matrix[:, i]) 
         
         # Surface excess × charge × concentration [Å.M]
@@ -75,10 +75,11 @@ function pGM!(time, potential, p; pGM::Float64=0.0)
     end
     
     # Surface tension [Å] / [M.m.Å/mN] -> [mN/m.M]
+    # [mN.dm3/mol.m]
     tension = sum(gammacon) / STconst
     
     for (index, c_i) in enumerate(ion_conc)
-        # Surface excess squared [Å^2]
+        # Surface excess squared [Å2]
         gammacon_squared = gammacon[index]^2
         
         # Gibbs-Marangoni pressure [m4.mol.kg/m5.mol.s2] -> [Pa], Eq.5

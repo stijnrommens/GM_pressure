@@ -38,19 +38,20 @@ using .Check_Mod
     ion_hyd_radii::Vector{Float64}  = Vector{Float64}[]
     ion_Wcal::Vector{Float64}  = Vector{Float64}[]
     ion_types::Array{String}  = Vector{String}[]
+    boundary::Float64
 end
 
 const kB = 1.3806503e-23         # Boltzmann constant [J/K]
 const elc = 1.6021765e-19        # Elementary charge  [C]
 const Avog = 6.0221415e23        # Avogadro constant  [1/mol]
 const epsilon_o = 8.85418782e-12 # Vacuum's permittivity [F/m]
-const epsilon_w = 78.3           # Water's permittivity [F/m]
+const epsilon_w = 78.3           # Water's relative permittivity [-] 
 
 function main(list=false; 
     print_flag::Bool=true, T::Float64=297.15, h::Float64=10e-9, ionS::Float64=0.0, ion_tot::Tuple=(),
-    abstol::Float64=1e-9, reltol::Float64=1e-9, fun=mPBE!, bc=bc!)
+    abstol::Float64=1e-3, reltol::Float64=1e-3)
     
-
+    # TODO consider using concentration as [mol/m3]. Makes everything more SI-consistent
     if list == false
         # contains molar concentration, charge, hydrated radius, type {'alpha', 'beta', 'proton'}
         # list = [[0.1, +1, 2.5e-10], [0.1, -1, 2.0e-10]]
@@ -63,16 +64,21 @@ function main(list=false;
     end
     # n = length(list)/2 # Number of salts [-]
 
-    STconst = -1e-6 * 1e10 / (Avog * kB * T)    # Surface tension constant [mol/N.m] -> [M.m.Å/mN]
+    # STbase in [mol/N.m] = [mol.s2/kg.m2]
+    STbase = - 1 / (Avog * kB * T)
+    # STbase * [N/mN] * [m2/m2] * [Å/m] * [dm3/m3] -> [M.m.Å/mN]
+    STconst = STbase * 1e-3 * 1 * 1e10 * 1e-3
 
     for ion in list
         ionS += ion[1] * ion[2]^2
     end
-    ionS = 0.5*ionS # Ionic strength [M]
+    ionS = 0.5 * ionS   # Ionic strength [M]
     
     # Inverse Debye-Hückel lenght [1/m]
+    # FIXME kappa as a constant is not sensible when looking at ions with
+    # different charges. Should be recalculated for each ion.
     kappa::Float64 = sqrt(
-        2 * elc^2 * Avog * ionS * 1000
+        elc^2 * Avog * 2 * ionS * 1000
         / (kB * T * epsilon_w * epsilon_o)
     )
     
@@ -81,13 +87,14 @@ function main(list=false;
     end
 
     # Boundary defined as 10x Debye-Hückel length [Å]
-    boundary = 10e10 / kappa
+    boundary = 10 * 1e10 / kappa
 
     params = Para(
         T = T,
         kappa = kappa,
         STconst = STconst,
-        ionS = ionS
+        ionS = ionS,
+        boundary = boundary
     )
 
     n_present = 0
@@ -132,11 +139,12 @@ function main(list=false;
         ion_types = ion_types)
     # println(eltype(mPBE_param))
 
-    paramized_fun(du, u, p, t) = fun(du, u, mPBE_param, t)
+    paramized_fun!(du, u, p, t) = mPBE!(du, u, mPBE_param, t)
+    paramized_bc!(residual, u, p, t) = bc!(residual, u, mPBE_param, t)
     tspan = (boundary, 0.0)
-    u0  = [0.0, 0.0]
+    u0  = [0, 0]
     
-    bvp_problem = BVProblem(paramized_fun, bc, u0, tspan)
+    bvp_problem = BVProblem(paramized_fun!, paramized_bc!, u0, tspan)
     bvp_sol     = solve(
         bvp_problem,
         # Rodas4P worked for the 'tough' NH4Cl concentration at tolerances of 1e-9
@@ -149,10 +157,12 @@ function main(list=false;
         # MultipleShooting(;ode_alg = QNDF(autodiff = false), nshoots = 20),
         # Shooting(;ode_alg = AutoVern7(Rodas4(autodiff = false))),
         abstol = abstol,
-        reltol = reltol)
+        reltol = reltol,
+        maxiters = 1e7)
 
     # println(bvp_sol[1], bvp_sol[-1])
     # --- Gibbs-Marangoni pressure ---
+    # TODO rewrite time to be distance. There is no time things happening here.
     time_range = range(0.0, boundary, 100001)
     # pGM_constants = (beta, elc, epsilon_o, epsilon_w, Avog, kappa, STconst, ionS, h)
     # pGM_param = (pGM_constants, ion_tot, n)
