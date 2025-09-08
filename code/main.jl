@@ -31,7 +31,7 @@ using .Check_Mod
     h::Float64 = 10e-9              # Film thickness between two bubbles [m]
     kappa::Float64                  # Inverse Debye-Hueckel length [1/m]
     # n::Int64
-    STconst::Float64                # Constant for surface tension calculations [mol.m.Å/mN.dm3]
+    STconst::Float64                # Constant for surface tension calculations [mol.m.Å/mN.dm3] = 
     ionS::Float64                   # Ionic strength [mol/m3]
     ion_conc::Vector{Float64} = Vector{Float64}[]   # Ion concentration [mol/m3]
     ion_charges::Vector{Int64}  = Vector{Float64}[]
@@ -42,18 +42,33 @@ using .Check_Mod
 end
 
 function Para_to_angstrom(params)
-    @unpack kB, epsilon_o, h, kappa, STconst, 
+    @unpack kB, epsilon_o, h, kappa, STconst, boundary = params
+    @unpack ionS, ion_conc, ion_hyd_radii, ion_Wcal = params
+    angstrom_per_meter = 1e10       # [Å/m]
+    meter_per_angstrom = 1e-10      # [m/Å]
+    new_params = Para(params;
+        boundary = boundary,    # boundary already in Å
+        kB = kB * angstrom_per_meter^2, # kB originally in [kg.m2/s.K]
+        h = h * angstrom_per_meter,     # h originally in [m]
+        kappa = kappa * meter_per_angstrom,     # κ originally in [1/m]
+        ionS = ionS * meter_per_angstrom^3,     # ionS originally in [mol/m3]
+        STconst = STconst * meter_per_angstrom^2,   # STconst originally in [mol.s2/kg.m2]
+        ion_conc = ion_conc * meter_per_angstrom^3,  # ion_conc originally in [mol/m3]
+        epsilon_o = epsilon_o * meter_per_angstrom^3,   # epsilon originally in [s4.A2/kg.m3]
+        ion_Wcal = ion_Wcal * angstrom_per_meter^2,     # Wcal originally in [kg.m2/s2]
+        ion_hyd_radii = ion_hyd_radii * angstrom_per_meter, # ion_hyd_radii originally in [m]
+    )
+    return new_params
 end
 
 const kB = 1.3806503e-23         # Boltzmann constant [J/K]
 const elc = 1.6021765e-19        # Elementary charge  [C]
 const Avog = 6.0221415e23        # Avogadro constant  [1/mol]
-const epsilon_o = 8.85418782e-12 # Vacuum's permittivity [F/m]
+const epsilon_o = 8.85418782e-12 # Vacuum's permittivity [F/m] = [s4.A2/kg.m3]
 const epsilon_w = 78.3           # Water's relative permittivity [-] 
 
 function main(list=false; 
-    print_flag::Bool=true, T::Float64=297.15, h::Float64=10e-9, ionS::Float64=0.0, ion_tot::Tuple=(),
-    abstol::Float64=1e-3, reltol::Float64=1e-3)
+    print_flag::Bool=true, T::Float64=297.15, abstol::Float64=1e-3, reltol::Float64=1e-3)
     
     # TODO consider using concentration as [mol/m3]. Makes everything more SI-consistent
     if list == false
@@ -70,17 +85,18 @@ function main(list=false;
 
     # STbase in [mol/N.m] = [mol.s2/kg.m2]
     STbase = - 1 / (Avog * kB * T)
-    # STbase * [N/mN] * [m2/m2] * [Å/m] * [dm3/m3] -> [M.m.Å/mN]
-    STconst = STbase * 1e-3 * 1 * 1e10 * 1e-3
+    # STbase * [N/mN] * [m2/m2] * [Å/m] * [dm3/m3] -> [M.m.Å/mN] = [mol.Å.s2/dm3.kg]
+    # STconst = STbase * 1e-3 * 1 * 1e10 * 1e-3
+    STconst = STbase
 
+    ionS = 0.0
     for ion in list
         ionS += ion[1] * ion[2]^2
     end
     ionS = 0.5 * ionS   # Ionic strength [mol/m3]
     
     # Inverse Debye-Hückel lenght [1/m]
-    # FIXME kappa as a constant is not sensible when looking at ions with
-    # different charges. Should be recalculated for each ion.
+    # κ is based on ionic strength as indicated in the Wikipedia article
     kappa::Float64 = sqrt(
         elc^2 * Avog * 2 * ionS
         / (kB * T * epsilon_w * epsilon_o)
@@ -135,17 +151,19 @@ function main(list=false;
     # --- Electrostatic potential ---
     # mPBE_constants = (beta, elc, epsilon_o, epsilon_w, Avog, kappa)
     # mPBE_param = (mPBE_constants, ion_tot, n)
-    mPBE_param = Para(params,
+    full_param = Para(params,
         ion_conc = ion_conc,
         ion_charges = ion_charges,
         ion_hyd_radii = ion_hyd_radii,
         ion_Wcal = ion_Wcal,
         ion_types = ion_types)
     # println(eltype(mPBE_param))
+    
+    full_param = Para_to_angstrom(full_param)
 
-    paramized_fun!(du, u, p, t) = mPBE!(du, u, mPBE_param, t)
-    paramized_bc!(residual, u, p, t) = bc!(residual, u, mPBE_param, t)
-    tspan = (boundary, 0.0)
+    paramized_fun!(du, u, p, t) = mPBE!(du, u, full_param, t)
+    paramized_bc!(residual, u, p, t) = bc!(residual, u, full_param, t)
+    tspan = (boundary, 0.0)     # [Å]
     u0  = [0, 0]
     
     bvp_problem = BVProblem(paramized_fun!, paramized_bc!, u0, tspan)
@@ -170,7 +188,7 @@ function main(list=false;
     time_range = range(0.0, boundary, 100001)
     # pGM_constants = (beta, elc, epsilon_o, epsilon_w, Avog, kappa, STconst, ionS, h)
     # pGM_param = (pGM_constants, ion_tot, n)
-    pGM_sol = pGM!(time_range, bvp_sol, mPBE_param)
+    pGM_sol = pGM!(time_range, bvp_sol, full_param)
 
     # println("\nChecks:")
     Check_Mod.check_input(list, print_flag=print_flag)  

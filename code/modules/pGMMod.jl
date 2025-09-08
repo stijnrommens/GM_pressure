@@ -37,26 +37,26 @@ function pGM!(time, potential, p; pGM::Float64=0.0)
     
     conc_matrix = zeros(Float64, size(time)[1], length(ion_conc))
     for (i, t) in enumerate(time)
-        z = 1e-10t      # [m]
+        # z = 1e-10t      # [m]
         for (j, (c_i, ch_i, hr_i, W_i, type_i)) in enumerate(zip(ion_conc, ion_charges, ion_hyd_radii, ion_Wcal, ion_types))
 
             if type_i == "beta"
-                if z < hr_i
-                    U = W_i * hr_i / z * exp(-2kappa * (z - hr_i)) - 2.1 * kB * T
+                if t < hr_i
+                    U = W_i * hr_i / t * exp(-2kappa * (t - hr_i)) - 2.1 * kB * T
                 else
-                    U = W_i * hr_i / z * exp(-2kappa * (z - hr_i))
+                    U = W_i * hr_i / t * exp(-2kappa * (t - hr_i))
                 end
             elseif type_i == "proton"
-                if z < hr_i
-                    U = 1 / (4pi * z) * (elc^2) / (4epsilon_o * epsilon_w) * exp(-2kappa * z) - 3.05 * kB * T
+                if t < hr_i
+                    U = 1 / (4pi * t) * (elc^2) / (4epsilon_o * epsilon_w) * exp(-2kappa * t) - 3.05 * kB * T
                 else
-                    U = 1 / (4pi * z) * (elc^2) / (4epsilon_o * epsilon_w) * exp(-2kappa * z)
+                    U = 1 / (4pi * t) * (elc^2) / (4epsilon_o * epsilon_w) * exp(-2kappa * t)
                 end
             else
-                if z < hr_i
+                if t < hr_i
                     U = 1000 * kB * T
                 else
-                    U = W_i * hr_i / z * exp(-2kappa * (z - hr_i))
+                    U = W_i * hr_i / t * exp(-2kappa * (t - hr_i))
                 end
             end
             conc_matrix[i, j] = exp(-1 / (kB * T) * (U + ch_i * elc * potential(t)[1])) - 1 # Fractionate ionic concentration profile [M/M] = [-], Eq.6
@@ -82,8 +82,8 @@ function pGM!(time, potential, p; pGM::Float64=0.0)
         # Surface excess squared [Å2]
         gammacon_squared = gammacon[index]^2
         
-        # Gibbs-Marangoni pressure [m4.mol.kg/m5.mol.s2] -> [Pa], Eq.5
-        pGM += 4Avog * 1e-20kB * T * c_i * gammacon_squared / (h^2)
+        # Gibbs-Marangoni pressure [Å4.mol.kg/Å5.mol.s2] -> [Pa], Eq.5
+        pGM += 4Avog * kB * T * c_i * gammacon_squared / (h^2)
     end
 
     return (conc_matrix, gammacon_qc, tension, pGM)
