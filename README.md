@@ -6,31 +6,65 @@ Numerical solver of the **modified Poisson-Boltzmann equation** from Duignan (20
 The model needs the following input:
 - ionic concentrations;
 - hydrated radius and charge of each ion;
-- adsorption energy function as a function of distance from the gas-liquid interface, for each ion.
 
 As output, the electrostatic potential of salts at the interface is obtained. This can be used to calculate the surface excess of ions, which results in the **Gibbs-Marangoni pressure** (at 10 nm separation).
 
 Sources:\
 [1] Duignan, T. T. (2021). The surface potential explains ion-specific bubble coalescence inhibition. _Journal of Colloid and Interface Science, 600_, 338–343. https://doi.org/10.1016/j.jcis.2021.04.144
 
-# Prerequisites
+# Requirements
 Julia (v1.9) needs to be installed. The attached _.tomls_ in this repo should automatically install the required packages.
 
-# How it works
-The input can be given in the file _input.jl_:
-- At the top, the ionic strength (**ionS**) needs to be given. This value and the predefined constants are then used to calculate the required parameters. \
-  <img src="https://github.com/stijnrommens/GM_pressure/blob/main/ionS_fig.PNG" width="400">
-- The next part of the input file asks for the adsorption energy function (**U**), hydrated radius (**r**) and charge (**q**) of each ion. The U-function for α-ions is already given, with a couple of input examples. The _misc.jl_ file also contains U-functions for the β-ions H<sup>+</sup> and ClO<sub>4</sub><sup>-</sup>. \
-  <img src="https://github.com/stijnrommens/GM_pressure/blob/main/Uqr_fig.PNG" width="400">
-- Lastly, the total ionic composition (**ion_tot**) and the number of salts (**n_salts**) need to be filled in. As an example, a mixture conposed of Na<sub>2</sub>SO<sub>4</sub> and NH<sub>4</sub>Cl has ion_tot = (Na, Na, SO<sub>4</sub>, NH<sub>4</sub>, Cl) and n_salts = 2. The ion_tot tuple can be extended as much as possible. \
-  <img src="https://github.com/stijnrommens/GM_pressure/blob/main/ntot_fig.PNG" width="500">
-- The file also prints the results and allows the creation of plots. To make plots, the code at the bottom of the script can be uncommented (also don't forget the import at the top of the file!).
+# How to use
+Open a Julia REPL in the base folder (`~\GM_pressure>julia`), and activate the environment (`julia>] activate .`).
 
+In the Julia REPL, include the file `main.jl` (`julia>include("code/main.jl")`). This gives you access to the `main()` function which is used to calculate the GM pressure for an electrolyte mixture.
+
+The first and most important input to `main()` is the list of ions. In this list, each input is expected to be a list describing an individual ion as `[concentration, charge, hydrated radius, type]`.
+
+The function returns three values: a `float` for the GM pressure in Pa, a `float` for the surface tension gradient ($\delta\gamma/\delta c$) in $\mathrm{\left[mN* m^{-1}* M^{-1}\right]}$ and a `bool` success flag indicating if the system solved successfully.
+
+## Example 1:
+Calculating the GM pressure for an 0.5 M NaCl solution:
+
+```julia
+main([
+  [0.5, +1, 2.5e-10, "alpha"],
+  [0.5, -1, 2.0e-10, "alpha"]
+])
+```
+
+which will return
+
+```julia
+(8759.22..., 1.471..., true)
+```
+
+## Example 2:
+Calculating the GM pressure for an 0.95 M NaCH3COO solution:
+
+```julia
+main([
+  [0.95, +1, 2.5e-10, "alpha"],
+  [0.95, -1, 3.22e-10, "beta"]
+])
+```
+
+which will return
+
+```julia
+(6048.09..., 0.886..., true)
+```
+
+In this case, the solver will throw some warnings during the solution finding. As long as the final return flag is true, these warnings were overcome later during the solving of the system of equations and can safely be ignored.
 
 # Debugging & Tweaking
-Certain scenarios (e.g. high ionic strengths) may result in warnings/errors from the BVP-solver. This will most likely return values which go to infinity. The following solver arguments in _solver.jl_ can be changed:
-- absolute tolerance (**abstol**); currently at 1e-12 (default is 1e-6)
-- relative tolerance (**reltol**); currently at 1e-6 (default is 1e-3)
-- time span (**tspan**); currently set at 10x Debye length
+Certain scenarios (e.g. high ionic strengths) may result in warnings/errors from the BVP-solver. This will most likely return values which go to infinity.
+`main()` accepts several keyword arguments that can help increase stability (at the cost of speed) or increase speed (at the cost of stability):
 
-Changing these arguments also increases speed, as long as the results are accurate enough. Accuracy/validity can be tested by checking if the surface excess of all ions fulfils the **electroneutrality condition** ($\sum$ surface excesses = 0).
+- absolute tolerance (**abstol**); currently at 1e-9 (default is 1e-6)
+- relative tolerance (**reltol**); currently at 1e-9 (default is 1e-3)
+
+Additionally, the algorithm used can be changed around line 166. 
+
+Accuracy/validity are tested by checking if the surface excess of all ions fulfils the electroneutrality condition by checking that $\sum^n \Gamma_i * q_i * c_i = 0$.

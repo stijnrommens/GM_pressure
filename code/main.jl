@@ -41,6 +41,45 @@ const epsilon_w = 78.3           # Water's permittivity [F/m]
 function main(list=false; 
     print_flag::Bool=true, T::Float64=297.15, h::Float64=10e-9, ionS::Float64=0.0, ion_tot::Tuple=(),
     abstol::Float64=1e-9, reltol::Float64=1e-9, fun=mPBE!, bc=bc!)
+    """
+    Solve the modified Poisson–Boltzmann equation (mPBE) and compute the Gibbs-Marangoni pressure for a given electrolyte solution.
+    
+    # Args:
+        list (array or false): 
+            Array of arrays, each specifying an ion as 
+            [concentration [M], charge, hydrated radius [m], type (optional)]. 
+            If type is not provided, alpha ion is assumed.
+            If false, a default list is used.
+        print_flag (Bool): 
+            Statement to (not) print the checks and results.
+        T (Float64): 
+            Temperature [K].
+        h (Float64): 
+            Separation distance [m].
+        ionS (Float64): 
+            Initial ionic strength [M].
+        ion_tot (Tuple): 
+            Additional ion parameters (unused by default).
+        abstol (Float64): 
+            Absolute tolerance for the BVP solver.
+        reltol (Float64): 
+            Relative tolerance for the BVP solver.
+        fun (Function): 
+            Function for the mPBE ODE system (default: mPBE!).
+        bc (Function): 
+            Boundary condition function (default: bc!).
+    
+    # Returns:
+        pGM (Float64): 
+            Gibbs-Marangoni pressure [Pa].
+        surface_tension_gradient (Float64): 
+            Calculated surface tension gradient [mN/m.M].
+        retcode: 
+            Return code from the BVP solver indicating success or failure.
+    
+    # Example:
+        pGM, surface_tension, retcode = main()
+    """
     
 
     if list == false
@@ -119,11 +158,10 @@ function main(list=false;
     # println(eltype(mPBE_param))
 
     paramized_fun(du, u, p, t) = fun(du, u, mPBE_param, t)
+    
     tspan = (boundary, 0.0)
     u0  = [0.0, 0.0]
-    # TODO rewrite for use of MultipleShooting - Need mPBE_param to have concrete 
-    # type in eltype(). That means rewriting mPBE and maybe bc to have a less
-    # convoluted input in parameters
+
     bvp_problem = BVProblem(paramized_fun, bc, u0, tspan)
     bvp_sol     = solve(
         bvp_problem,
@@ -154,7 +192,7 @@ function main(list=false;
     if print_flag == true
         println("\nResults:")
         println("   • Surface excess × q × c   = ", round.(pGM_sol[2]; digits=3), " = ", round.(sum(pGM_sol[2]); digits=3), " Å")
-        @printf("   • Surface tension          = %.3e mN/m.M", pGM_sol[3])
+        @printf("   • Surface tension gradient = %.3e mN/m.M", pGM_sol[3])
         @printf("\n   • Electrostatic potential  = %.3f mV", 1000*last(bvp_sol.u)[1])
         @printf("\n   • Gibbs-Marangoni pressure = %.3f Pa\n", pGM_sol[4])
     end
